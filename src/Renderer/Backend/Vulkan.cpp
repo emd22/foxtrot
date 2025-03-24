@@ -1,8 +1,14 @@
 #include "Vulkan.hpp"
 
+#include <Core/Defines.hpp>
 #include <Core/Types.hpp>
-#include "../Util/Log.hpp"
-#include "vulkan/vulkan_core.h"
+
+#include <Util/Log.hpp>
+
+#include "Renderer/Backend/Vulkan/Fence.hpp"
+#include "Renderer/Backend/Vulkan/Semaphore.hpp"
+#include "Vulkan/CommandPool.hpp"
+#include "Vulkan/CommandBuffer.hpp"
 
 #include <iostream>
 #include <vector>
@@ -13,26 +19,16 @@
 #include "RenderPanic.hpp"
 
 #include <SDL3/SDL_vulkan.h>
+#include <SDL3/SDL.h>
 
 #define AR_VULKAN_DEBUG 1
+
+namespace vulkan {
 
 using ExtensionNames = VkRenderBackend::ExtensionNames;
 using ExtensionList = VkRenderBackend::ExtensionList;
 
-const VkAllocationCallbacks *VulkanAllocator = nullptr;
-
-template <typename T, typename... Types>
-void Panic(const char *fmt, T first, Types... items)
-{
-    RenderPanic(nullptr, fmt, first, items...);
-}
-
-template <typename T, typename... Types>
-void Panic(const char *fmt, VkResult result, Types... items)
-{
-    RenderPanic(nullptr, fmt, result, items...);
-}
-
+AR_SET_MODULE_NAME("Vulkan")
 
 ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames requested_extensions)
 {
@@ -72,12 +68,45 @@ std::vector<VkLayerProperties> VkRenderBackend::GetAvailableValidationLayers()
 
 VkDebugUtilsMessengerEXT CreateDebugMessenger(VkInstance instance);
 
-void VkRenderBackend::Init()
+void VkRenderBackend::Init(Vec2i window_size)
 {
     this->InitVulkan();
     this->CreateSurfaceFromWindow();
 
+    this->mDevice.Create(this->mInstance, this->mWindowSurface);
+    this->Swapchain.Init(window_size, this->mWindowSurface, this->mDevice);
 
+    this->InitFrames();
+
+    this->Initialized = true;
+}
+
+void VkRenderBackend::InitFrames()
+{
+    this->Frames.InitSize(this->FramesInFlight);
+
+    const uint32 graphics_family = this->GetDevice()->mQueueFamilies.GetGraphicsFamily();
+
+    GPUDevice *device = this->GetDevice();
+
+    for (int i = 0; i < this->Frames.Size; i++) {
+        this->Frames.Data[i].CommandPool.Create(device, graphics_family);
+        this->Frames.Data[i].CommandBuffer.Create(&this->Frames.Data[i].CommandPool);
+
+        this->Frames.Data[i].Create(device);
+    }
+}
+
+void VkRenderBackend::DestroyFrames()
+{
+    for (auto &frame : this->Frames) {
+        frame.CommandBuffer.Destroy();
+        frame.CommandPool.Destroy();
+
+        frame.Destroy();
+    }
+
+    this->Frames.Free();
 }
 
 void VkRenderBackend::InitVulkan()
@@ -152,7 +181,7 @@ void VkRenderBackend::InitVulkan()
     }
 #endif
 
-    this->mInitialized = true;
+    this->Initialized = true;
 }
 
 uint32 DebugMessageCallback(
@@ -232,7 +261,7 @@ VkDebugUtilsMessengerEXT CreateDebugMessenger(VkInstance instance)
 
     VkDebugUtilsMessengerEXT messenger;
 
-    const auto status = CreateDebugUtilsMessengerEXT(instance, &create_info, VulkanAllocator, &messenger);
+    const auto status = CreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &messenger);
     if (status != VK_SUCCESS) {
         Log::Error("Could not create debug messenger! (err: %s)", VulkanUtil::ResultToStr(status));
         return nullptr;
@@ -246,7 +275,7 @@ void DestroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messeng
         return;
     }
 
-    DestroyDebugUtilsMessengerEXT(instance, messenger, VulkanAllocator);
+    DestroyDebugUtilsMessengerEXT(instance, messenger, nullptr);
 }
 
 ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames user_requested_extensions)
@@ -309,25 +338,34 @@ ExtensionList VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
     return mAvailableExtensions;
 }
 
-void VkRenderBackend::CreateSurfaceFromWindow() {
+void VkRenderBackend::CreateSurfaceFromWindow()
+{
     if (this->mWindow == nullptr) {
         Panic("No window attached! use VkRenderBackend::SelectWindow()", 0);
     }
 
-    bool success = SDL_Vulkan_CreateSurface(this->mWindow, this->mInstance, VulkanAllocator, &this->mWindowSurface);
+    bool success = SDL_Vulkan_CreateSurface(this->mWindow, this->mInstance, nullptr, &this->mWindowSurface);
     if (!success) {
         Panic("Could not attach Vulkan instance to window! (SDL err: %s)", SDL_GetError());
     }
 }
 
-VkRenderBackend::~VkRenderBackend() {
+void VkRenderBackend::Destroy()
+{
     DestroyDebugMessenger(this->mInstance, this->mDebugMessenger);
 
     if (this->mWindowSurface) {
         vkDestroySurfaceKHR(this->mInstance, this->mWindowSurface, nullptr);
     }
 
-    vkDestroyInstance(this->mInstance, VulkanAllocator);
+    vkDestroyInstance(this->mInstance, nullptr);
 
-    this->mInitialized = false;
+    this->Initialized = false;
 }
+
+FrameData *VkRenderBackend::GetFrame()
+{
+    return &this->Frames[this->GetFrameNumber()];
+}
+
+}; // namespace vulkan

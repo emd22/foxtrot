@@ -1,12 +1,15 @@
 #pragma once
 
+#include "Core/StaticArray.hpp"
+#include "vulkan/vulkan_core.h"
 #include <Core/Types.hpp>
 
-#include "vulkan/vulkan_core.h"
 #include <cstdint>
 #include <vulkan/vulkan.h>
 
 #include <vector>
+
+namespace vulkan {
 
 class QueueFamilies {
 public:
@@ -36,8 +39,18 @@ public:
         return (this->mGraphicsIndex == this->mPresentIndex);
     }
 
+    uint32 GetGraphicsFamily()
+    {
+        return this->mGraphicsIndex;
+    }
+
+    uint32 GetPresentFamily()
+    {
+        return this->mPresentIndex;
+    }
+
 public:
-    std::vector<VkQueueFamilyProperties> RawFamilies;
+    StaticArray<VkQueueFamilyProperties> RawFamilies;
 private:
     uint32 mGraphicsIndex = QueueNull;
     uint32 mPresentIndex = QueueNull;
@@ -45,7 +58,13 @@ private:
 
 class GPUDevice {
 public:
-    GPUDevice(VkInstance instance, VkSurfaceKHR surface);
+    GPUDevice() = default;
+    GPUDevice(VkInstance instance, VkSurfaceKHR surface)
+    {
+        this->Create(instance, surface);
+    }
+
+    void Create(VkInstance instance, VkSurfaceKHR surface);
 
     void PickPhysicalDevice();
     void CreateLogicalDevice();
@@ -53,7 +72,7 @@ public:
     VkSurfaceFormatKHR GetBestSurfaceFormat();
 
 private:
-    bool IsPhysicalDeviceSuitable();
+    bool IsPhysicalDeviceSuitable(VkPhysicalDevice &device);
     void QueryQueues();
 
 public:
@@ -69,3 +88,5 @@ private:
     VkInstance mInstance;
     VkSurfaceKHR mSurface;
 };
+
+}; // namespace vulkan

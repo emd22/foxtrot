@@ -1,12 +1,14 @@
 #pragma once
 
-#include "Vulkan/Util.hpp"
+#include <Core/Defines.hpp>
+
 #include <Util/Log.hpp>
+#include "Vulkan/Util.hpp"
 
 #include <vulkan/vulkan.h>
 
 template <typename T, typename... Types>
-void RenderPanic(const char *module, const char *fmt, T first, Types... items)
+void Panic_(const char * const module, const char *fmt, T first, Types... items)
 {
     Log::LogSeverityText<Log::Severity::Fatal>();
 
@@ -21,7 +23,7 @@ void RenderPanic(const char *module, const char *fmt, T first, Types... items)
 }
 
 template <typename... Types>
-void RenderPanic(const char *module, const char *fmt, VkResult result, Types... items)
+void Panic_(const char *module, const char *fmt, VkResult result, Types... items)
 {
     Log::LogSeverityText<Log::Severity::Fatal>();
 
@@ -36,3 +38,6 @@ void RenderPanic(const char *module, const char *fmt, VkResult result, Types... 
 
     std::terminate();
 }
+
+#define Panic(...) \
+    Panic_(ArModuleName__, __VA_ARGS__)

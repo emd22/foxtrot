@@ -1,31 +1,17 @@
 #include "Device.hpp"
-#include "Util.hpp"
+#include "Core/Defines.hpp"
+#include "Core/StaticArray.hpp"
+
+namespace vulkan {
 
 #include "vulkan/vulkan_core.h"
 
 #include <Util/Log.hpp>
 #include <climits>
 
-#include <Backend/RenderPanic.hpp>
+#include <Renderer/Backend/RenderPanic.hpp>
 
-template <typename T, typename... Types>
-void Panic(const char *fmt, T first, Types... items)
-{
-    RenderPanic("Device: ", fmt, first, items...);
-}
-
-template <typename T, typename... Types>
-void Panic(const char *fmt, VkResult result, Types... items)
-{
-    RenderPanic("Device: ", fmt, result, items...);
-}
-
-static void VkTry(VkResult result, const char *message)
-{
-    if (result != VK_SUCCESS) {
-        Panic(message, result);
-    }
-}
+AR_SET_MODULE_NAME("Device")
 
 ///////////////////////////////
 // Queue Families
@@ -37,8 +23,8 @@ void QueueFamilies::FindQueueFamilies(VkPhysicalDevice physical_device, VkSurfac
     uint32 family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &family_count, nullptr);
 
-    this->RawFamilies.reserve(family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &family_count, this->RawFamilies.data());
+    this->RawFamilies.InitSize(family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &family_count, this->RawFamilies.Data);
 
     Log::Info("Amount of queue families: %d", family_count);
 
@@ -83,31 +69,29 @@ void QueueFamilies::FindQueueFamilies(VkPhysicalDevice physical_device, VkSurfac
 // GPU Device
 ///////////////////////////////
 
-bool GPUDevice::IsPhysicalDeviceSuitable()
+bool GPUDevice::IsPhysicalDeviceSuitable(VkPhysicalDevice &physical)
 {
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
 
     QueueFamilies new_families;
-    new_families.FindQueueFamilies(this->Physical, this->mSurface);
+    new_families.FindQueueFamilies(physical, this->mSurface);
 
-    vkGetPhysicalDeviceFeatures(this->Physical, &features);
-    vkGetPhysicalDeviceProperties(this->Physical, &properties);
+    vkGetPhysicalDeviceFeatures(physical, &features);
+    vkGetPhysicalDeviceProperties(physical, &properties);
 
     const uint32 version = properties.apiVersion;
 
-    if (version > VK_MAKE_VERSION(1, 2, 0) && this->mQueueFamilies.IsComplete()) {
+    if (version > VK_MAKE_VERSION(1, 2, 0) && new_families.IsComplete()) {
         return true;
     }
 
-    const auto families = new_families.GetQueueIndexList();
-
-    Log::Info("Device not suitable: (Vk: %d.%d.%d), Graphics?: %s, Present?: %s",
+    Log::Info("Device not suitable: (Vk: %d.%d.%d), Graphics?: %s, Present?: %s, IsComplete?: %s",
         VK_VERSION_MAJOR(version),
         VK_VERSION_MINOR(version),
         VK_VERSION_PATCH(version),
-        Log::YesNo(families[0] != QueueFamilies::QueueNull),
-        Log::YesNo(families[1] != QueueFamilies::QueueNull)
+        Log::YesNo(new_families.GetGraphicsFamily() != QueueFamilies::QueueNull),
+        Log::YesNo(new_families.GetPresentFamily() != QueueFamilies::QueueNull)
     );
 
     return false;
@@ -200,13 +184,16 @@ void GPUDevice::CreateLogicalDevice()
     this->QueryQueues();
 }
 
-GPUDevice::GPUDevice(VkInstance instance, VkSurfaceKHR surface)
-    : mInstance(instance), mSurface(surface)
+void GPUDevice::Create(VkInstance instance, VkSurfaceKHR surface)
 {
+    this->mInstance = instance;
+    this->mSurface = surface;
+
     this->PickPhysicalDevice();
 
     this->mQueueFamilies.FindQueueFamilies(this->Physical, surface);
 
+    this->CreateLogicalDevice();
 }
 
 VkSurfaceFormatKHR GPUDevice::GetBestSurfaceFormat()
@@ -228,26 +215,25 @@ VkSurfaceFormatKHR GPUDevice::GetBestSurfaceFormat()
 
 void GPUDevice::PickPhysicalDevice()
 {
-    std::vector<VkPhysicalDevice> physical_devices;
-
     // enumerate physical devices
-    {
-        const auto enum_err = "Could not enumerate physical devices";
 
-        uint32 device_count;
-        VkTry(vkEnumeratePhysicalDevices(this->mInstance, &device_count, nullptr), enum_err);
+    const char * enum_err = "Could not enumerate physical devices";
 
-        if (device_count == 0) {
-            Panic("No usable physical devices found (no vulkan support!)", 0);
-        }
+    uint32 device_count;
+    VkTry(vkEnumeratePhysicalDevices(this->mInstance, &device_count, nullptr), enum_err);
 
-        physical_devices.reserve(device_count);
 
-        VkTry(vkEnumeratePhysicalDevices(this->mInstance, &device_count, physical_devices.data()), enum_err);
+    if (device_count == 0) {
+        Panic("No usable physical devices found (no vulkan support!)", 0);
     }
 
+    StaticArray<VkPhysicalDevice> physical_devices(device_count);
+    physical_devices.InitSize();
+
+    VkTry(vkEnumeratePhysicalDevices(this->mInstance, &device_count, physical_devices.Data), enum_err);
+
     for (VkPhysicalDevice &device : physical_devices) {
-        if (IsPhysicalDeviceSuitable()) {
+        if (IsPhysicalDeviceSuitable(device)) {
             this->Physical = device;
             break;
         }
@@ -256,3 +242,5 @@ void GPUDevice::PickPhysicalDevice()
         Panic("Could not find a suitable physical device!", 0);
     }
 }
+
+}; // namespace vulkan

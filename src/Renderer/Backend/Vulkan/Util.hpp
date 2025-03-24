@@ -3,6 +3,16 @@
 
 #include <vulkan/vulkan.h>
 
+
+#define VkTry(func_result, message)               \
+    {                                             \
+        const VkResult result__ = (func_result);  \
+        if (result__ != VK_SUCCESS) {             \
+            Panic((message), result__);           \
+        }                                         \
+    }
+
+
 class VulkanUtil {
 public:
     static const char * ResultToStr(VkResult result) {

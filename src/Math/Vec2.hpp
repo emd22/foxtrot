@@ -51,15 +51,14 @@ public:
         this->mY *= other.mY;
     }
 
-    Type GetX() const
-    {
-        return this->mX;
-    }
+    Type GetX() const { return this->mX; }
+    Type GetY() const { return this->mY; }
 
-    Type GetY() const
-    {
-        return this->mY;
-    }
+    Type X() const { return this->GetX(); }
+    Type Y() const { return this->GetY(); }
+
+    Type Width() const { return this->GetX(); }
+    Type Height() const { return this->GetY(); }
 
     static const Vec2Base<Type> Zero()
     {

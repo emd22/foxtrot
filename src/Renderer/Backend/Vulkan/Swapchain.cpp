@@ -1,22 +1,27 @@
 #include "Swapchain.hpp"
+#include "Core/Defines.hpp"
 #include "Device.hpp"
 
 #include "../RenderPanic.hpp"
 
+#include "Renderer/Renderer.hpp"
 #include "vulkan/vulkan_core.h"
 
 #include <vulkan/vulkan.h>
 
-template <typename T, typename... Types>
-void Panic(const char *fmt, T first, Types... items)
-{
-    RenderPanic("Swapchain: ", fmt, first, items...);
-}
+AR_SET_MODULE_NAME("Swapchain")
 
-template <typename T, typename... Types>
-void Panic(const char *fmt, VkResult result, Types... items)
+namespace vulkan {
+
+void Swapchain::Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device)
 {
-    RenderPanic("Swapchain: ", fmt, result, items...);
+    AssertRendererExists();
+
+    this->CreateSwapchain(size, surface, device);
+    this->CreateSwapchainImages(device);
+    this->CreateImageViews(device);
+
+    this->Initialized = true;
 }
 
 void Swapchain::CreateSwapchainImages(GPUDevice &device)
@@ -138,3 +143,5 @@ Swapchain::~Swapchain()
 {
     this->Images.Free();
 }
+
+} // namespace vulkan

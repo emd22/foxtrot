@@ -1,11 +1,16 @@
 #pragma once
 
+#include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include <vulkan/vulkan.h>
+
+#include "Framebuffer.hpp"
 
 #include <Core/StaticArray.hpp>
 #include <Math/Vector.hpp>
 
 class GPUDevice;
+
+namespace vulkan {
 
 class Swapchain {
 public:
@@ -23,9 +28,9 @@ private:
     // void CreateSwapchainFramebuffers();
 
 public:
-
     StaticArray<VkImageView> ImageViews;
     StaticArray<VkImage> Images;
+    StaticArray<Framebuffer> Framebuffers;
 
     Vec2i Extent = Vec2i::Zero();
 
@@ -34,5 +39,8 @@ public:
     bool Initialized = false;
 
 private:
+    GraphicsPipeline *mPipeline = nullptr;
     VkSwapchainKHR mSwapchain = nullptr;
 };
+
+}; // namespace vulkan

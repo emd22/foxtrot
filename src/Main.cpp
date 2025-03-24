@@ -1,6 +1,5 @@
 
-#include <exception>
-#include <iostream>
+#include "Core/Defines.hpp"
 
 #define SDL_DISABLE_OLD_NAMES
 #include <SDL3/SDL.h>
@@ -10,27 +9,11 @@
 
 #include <Core/Types.hpp>
 
-#include "Backend/Vulkan.hpp"
+#include <Renderer/Renderer.hpp>
 
 static bool Running = true;
 
-template <typename T, typename... Types>
-void Panic(const char *fmt, T first, Types... items) {
-    printf(fmt, first, items...);
-    puts("");
-
-    std::terminate();
-}
-
-template <typename... Types>
-void Panic(const char *fmt, VkResult result, Types... items) {
-    printf(fmt, items...);
-    puts("");
-
-    printf("=> Vulkan Err: %d\n", result);
-
-    std::terminate();
-}
+AR_SET_MODULE_NAME("Main")
 
 class Window {
 public:
@@ -69,20 +52,20 @@ inline void ProcessEvents() {
 }
 
 int main() {
-
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         Panic("Could not initialize SDL! (SDL err: %s)\n", SDL_GetError());
     }
 
     Window window("Test window", 1024, 720);
 
-    VkRenderBackend backend;
-    backend.SelectWindow(window.GetWindow());
-    backend.Init();
+    RendererState.Vulkan.SelectWindow(window.GetWindow());
+    RendererState.Vulkan.Init(Vec2i(1024, 720));
 
     while (Running) {
         ProcessEvents();
     }
+
+    RendererState.Destroy();
 
     return 0;
 }

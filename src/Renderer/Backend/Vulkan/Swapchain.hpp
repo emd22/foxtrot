@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Backend/Vulkan/Pipeline.hpp"
+#include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include <vulkan/vulkan.h>
 
 #include "Framebuffer.hpp"
@@ -17,6 +18,7 @@ public:
     Swapchain() = default;
 
     void Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device);
+    void CreateSwapchainFramebuffers(GraphicsPipeline *pipeline);
 
     ~Swapchain();
 
@@ -25,7 +27,6 @@ private:
     void CreateSwapchainImages(GPUDevice &device);
 
     void CreateImageViews(GPUDevice &device);
-    // void CreateSwapchainFramebuffers();
 
 public:
     StaticArray<VkImageView> ImageViews;

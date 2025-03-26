@@ -41,9 +41,7 @@ public:
     vulkan::RenderPass RenderPass;
 private:
     GPUDevice *mDevice = nullptr;
-
     ShaderList mShaders;
-
 };
 
 }; // namespace vulkan

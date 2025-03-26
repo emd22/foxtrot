@@ -4,6 +4,7 @@
 
 #include "../RenderPanic.hpp"
 
+#include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include "Renderer/Renderer.hpp"
 #include "vulkan/vulkan_core.h"
 
@@ -137,6 +138,23 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &de
     if (status != VK_SUCCESS) {
         Panic("Could not create swapchain", status);
     }
+}
+
+void Swapchain::CreateSwapchainFramebuffers(GraphicsPipeline *pipeline)
+{
+    Log::Debug("Image view count: %d", this->ImageViews.Size);
+    this->Framebuffers.InitSize(this->ImageViews.Size);
+
+    StaticArray<VkImageView> temp_views(1);
+    temp_views.InitSize();
+
+    for (int i = 0; i < this->ImageViews.Size; i++) {
+        temp_views.Data[0] = this->ImageViews[i];
+
+        this->Framebuffers.Data[i].Create(temp_views, *pipeline, this->Extent);
+    }
+
+    this->mPipeline = pipeline;
 }
 
 Swapchain::~Swapchain()

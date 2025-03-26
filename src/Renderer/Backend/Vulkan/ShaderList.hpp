@@ -4,10 +4,13 @@
 #include <Core/Types.hpp>
 #include <Core/StaticArray.hpp>
 
+#include <Util/Log.hpp>
+
 #include <vulkan/vulkan.h>
 
 enum class ShaderType
 {
+    Unknown,
     Vertex,
     Fragment,
 };
@@ -25,10 +28,13 @@ public:
     VkShaderStageFlagBits GetStageBit()
     {
         switch (this->mShaderType) {
+            case ShaderType::Unknown:
+                Log::Error("Attempting to get shader stage bit of ShaderType::Unknown!", 0);
+
             case ShaderType::Vertex:
                 return VK_SHADER_STAGE_VERTEX_BIT;
             case ShaderType::Fragment:
-                return VK_SHADER_STAGE_VERTEX_BIT;
+                return VK_SHADER_STAGE_FRAGMENT_BIT;
         }
     }
 

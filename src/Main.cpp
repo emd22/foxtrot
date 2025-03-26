@@ -1,5 +1,9 @@
 
+
 #include "Core/Defines.hpp"
+#include "Renderer/Backend/Vulkan/Shader.hpp"
+#include "Renderer/Backend/Vulkan/Shader.hpp"
+#include "Renderer/Backend/Vulkan/ShaderList.hpp"
 
 #define SDL_DISABLE_OLD_NAMES
 #include <SDL3/SDL.h>
@@ -60,6 +64,24 @@ int main() {
 
     RendererState.Vulkan.SelectWindow(window.GetWindow());
     RendererState.Vulkan.Init(Vec2i(1024, 720));
+
+    vulkan::GraphicsPipeline pipeline;
+
+
+    {
+        ShaderList shader_list;
+
+        vulkan::Shader vertex_shader("../shaders/main.vert.spv", ShaderType::Vertex);
+        vulkan::Shader fragment_shader("../shaders/main.frag.spv", ShaderType::Fragment);
+
+        shader_list.Vertex = vertex_shader.ShaderModule;
+        shader_list.Fragment = fragment_shader.ShaderModule;
+
+        pipeline.Create(shader_list);
+
+        RendererState.Vulkan.Swapchain.CreateSwapchainFramebuffers(&pipeline);
+    }
+
 
     while (Running) {
         ProcessEvents();

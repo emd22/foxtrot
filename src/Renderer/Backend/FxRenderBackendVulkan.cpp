@@ -1,4 +1,4 @@
-#include "Vulkan.hpp"
+#include "FxRenderBackendVulkan.hpp"
 
 #include <Core/Defines.hpp>
 #include <Core/Types.hpp>
@@ -19,7 +19,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Vulkan/Util.hpp"
-#include "RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include "vulkan/vulkan_core.h"
 
 #include <ThirdParty/vk_mem_alloc.h>
@@ -31,12 +31,12 @@
 
 namespace vulkan {
 
-using ExtensionNames = VkRenderBackend::ExtensionNames;
-using ExtensionList = VkRenderBackend::ExtensionList;
+using ExtensionNames = FxRenderBackendVulkan::ExtensionNames;
+using ExtensionList = FxRenderBackendVulkan::ExtensionList;
 
 AR_SET_MODULE_NAME("Vulkan")
 
-ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames &requested_extensions)
+ExtensionNames FxRenderBackendVulkan::CheckExtensionsAvailable(ExtensionNames &requested_extensions)
 {
     if (this->mAvailableExtensions.IsEmpty()) {
         this->QueryInstanceExtensions();
@@ -61,7 +61,7 @@ ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames &request
     return missing_extensions;
 }
 
-StaticArray<VkLayerProperties> VkRenderBackend::GetAvailableValidationLayers()
+StaticArray<VkLayerProperties> FxRenderBackendVulkan::GetAvailableValidationLayers()
 {
     uint32 layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -76,7 +76,7 @@ StaticArray<VkLayerProperties> VkRenderBackend::GetAvailableValidationLayers()
 
 VkDebugUtilsMessengerEXT CreateDebugMessenger(VkInstance instance);
 
-void VkRenderBackend::Init(Vec2i window_size)
+void FxRenderBackendVulkan::Init(Vec2i window_size)
 {
     this->InitVulkan();
     this->CreateSurfaceFromWindow();
@@ -91,7 +91,7 @@ void VkRenderBackend::Init(Vec2i window_size)
     this->Initialized = true;
 }
 
-void VkRenderBackend::InitFrames()
+void FxRenderBackendVulkan::InitFrames()
 {
     this->Frames.InitSize(this->FramesInFlight);
 
@@ -107,7 +107,7 @@ void VkRenderBackend::InitFrames()
     }
 }
 
-void VkRenderBackend::DestroyFrames()
+void FxRenderBackendVulkan::DestroyFrames()
 {
     for (auto &frame : this->Frames) {
         frame.CommandBuffer.Destroy();
@@ -119,7 +119,7 @@ void VkRenderBackend::DestroyFrames()
     this->Frames.Free();
 }
 
-void VkRenderBackend::InitVulkan()
+void FxRenderBackendVulkan::InitVulkan()
 {
     const char* app_name = "Rocket";
     VkApplicationInfo app_info = {};
@@ -156,7 +156,7 @@ void VkRenderBackend::InitVulkan()
             }
         }
 
-        Panic("Missing required instance extensions", 0);
+        FxPanic("Missing required instance extensions", 0);
     }
 
     auto validation_layers = GetAvailableValidationLayers();
@@ -181,13 +181,13 @@ void VkRenderBackend::InitVulkan()
     VkResult result = vkCreateInstance(&instance_info, nullptr, &mInstance);
 
     if (result != VK_SUCCESS) {
-        Panic("Could not create vulkan instance!", result);
+        FxPanic("Could not create vulkan instance!", result);
     }
 
 #ifdef AR_VULKAN_DEBUG
     mDebugMessenger = CreateDebugMessenger(mInstance);
     if (!mDebugMessenger) {
-        Panic("Could not create debug messenger", 0);
+        FxPanic("Could not create debug messenger", 0);
     }
 #endif
 
@@ -288,7 +288,7 @@ void DestroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messeng
     DestroyDebugUtilsMessengerEXT(instance, messenger, nullptr);
 }
 
-void VkRenderBackend::InitGPUAllocator()
+void FxRenderBackendVulkan::InitGPUAllocator()
 {
     const GPUDevice *device = this->GetDevice();
 
@@ -300,16 +300,16 @@ void VkRenderBackend::InitGPUAllocator()
 
     const VkResult status = vmaCreateAllocator(&create_info, &this->GPUAllocator);
     if (status != VK_SUCCESS) {
-        Panic("Could not create VMA allocator!", status);
+        FxPanic("Could not create VMA allocator!", status);
     }
 }
 
-void VkRenderBackend::DestroyGPUAllocator()
+void FxRenderBackendVulkan::DestroyGPUAllocator()
 {
     vmaDestroyAllocator(this->GPUAllocator);
 }
 
-ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames &user_requested_extensions)
+ExtensionNames FxRenderBackendVulkan::MakeInstanceExtensionList(ExtensionNames &user_requested_extensions)
 {
     uint32 required_extension_count = 0;
     const char * const * required_extensions = SDL_Vulkan_GetInstanceExtensions(&required_extension_count);
@@ -330,7 +330,7 @@ ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames &user_r
     return total_extensions;
 }
 
-ExtensionList &VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
+ExtensionList &FxRenderBackendVulkan::QueryInstanceExtensions(bool invalidate_previous)
 {
     Log::Debug("Query Extensions", 0);
 
@@ -373,7 +373,7 @@ ExtensionList &VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous
     return this->mAvailableExtensions;
 }
 
-FrameResult VkRenderBackend::BeginFrame(GraphicsPipeline &pipeline)
+FrameResult FxRenderBackendVulkan::BeginFrame(GraphicsPipeline &pipeline)
 {
     FrameData *frame = this->GetFrame();
 
@@ -415,7 +415,7 @@ FrameResult VkRenderBackend::BeginFrame(GraphicsPipeline &pipeline)
     return FrameResult::Success;
 }
 
-void VkRenderBackend::SubmitFrame()
+void FxRenderBackendVulkan::SubmitFrame()
 {
     FrameData *frame = this->GetFrame();
 
@@ -442,12 +442,12 @@ void VkRenderBackend::SubmitFrame()
     );
 }
 
-void VkRenderBackend::PresentFrame()
+void FxRenderBackendVulkan::PresentFrame()
 {
     FrameData *frame = this->GetFrame();
 
     if (this->Swapchain.Initialized != true) {
-        Panic("Swapchain not initialized!", 0);
+        FxPanic("Swapchain not initialized!", 0);
     }
 
     const VkSwapchainKHR swapchains[] = {
@@ -478,7 +478,7 @@ void VkRenderBackend::PresentFrame()
     }
 }
 
-void VkRenderBackend::FinishFrame(GraphicsPipeline &pipeline)
+void FxRenderBackendVulkan::FinishFrame(GraphicsPipeline &pipeline)
 {
     pipeline.RenderPass.End();
 
@@ -495,7 +495,7 @@ void VkRenderBackend::FinishFrame(GraphicsPipeline &pipeline)
     this->mFrameNumber = (mInternalFrameCounter) % this->FramesInFlight;
 }
 
-FrameResult VkRenderBackend::GetNextSwapchainImage(FrameData *frame)
+FrameResult FxRenderBackendVulkan::GetNextSwapchainImage(FrameData *frame)
 {
     const uint64 timeout = UINT64_MAX; // TODO: change this value and handle AcquireNextImage errors correctly
 
@@ -522,20 +522,20 @@ FrameResult VkRenderBackend::GetNextSwapchainImage(FrameData *frame)
     return FrameResult::RenderError;
 }
 
-void VkRenderBackend::CreateSurfaceFromWindow()
+void FxRenderBackendVulkan::CreateSurfaceFromWindow()
 {
     if (this->mWindow == nullptr) {
-        Panic("No window attached! use VkRenderBackend::SelectWindow()", 0);
+        FxPanic("No window attached! use FxRenderBackendVulkan::SelectWindow()", 0);
     }
 
     bool success = SDL_Vulkan_CreateSurface(this->mWindow->GetWindow(), this->mInstance, nullptr, &this->mWindowSurface);
 
     if (!success) {
-        Panic("Could not attach Vulkan instance to window! (SDL err: %s)", SDL_GetError());
+        FxPanic("Could not attach Vulkan instance to window! (SDL err: %s)", SDL_GetError());
     }
 }
 
-void VkRenderBackend::Destroy()
+void FxRenderBackendVulkan::Destroy()
 {
     this->GetDevice()->WaitForIdle();
 
@@ -564,7 +564,7 @@ void VkRenderBackend::Destroy()
     this->Initialized = false;
 }
 
-FrameData *VkRenderBackend::GetFrame()
+FrameData *FxRenderBackendVulkan::GetFrame()
 {
     return &this->Frames[this->GetFrameNumber()];
 }

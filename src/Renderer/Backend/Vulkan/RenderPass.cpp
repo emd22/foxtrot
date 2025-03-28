@@ -8,7 +8,7 @@
 
 #include "Swapchain.hpp"
 
-#include "../RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 
 namespace vulkan {
 
@@ -61,13 +61,13 @@ void RenderPass::Create(GPUDevice &device, Swapchain &swapchain) {
 
     const VkResult status = vkCreateRenderPass(device.Device, &create_info, nullptr, &this->RenderPass);
     if (status != VK_SUCCESS) {
-        Panic("Failed to create render pass", status);
+        FxPanic("Failed to create render pass", status);
     }
 }
 
 void RenderPass::Begin() {
     if (this->RenderPass == nullptr) {
-        Panic("Render pass has not been previously created", 0);
+        FxPanic("Render pass has not been previously created", 0);
     }
 
     VkClearValue clear_color = {};

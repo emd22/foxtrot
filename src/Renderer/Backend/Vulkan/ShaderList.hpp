@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include "vulkan/vulkan_core.h"
 #include <Core/Types.hpp>
 #include <Core/StaticArray.hpp>
@@ -25,13 +25,11 @@ public:
     {
     }
 
-
-
     VkShaderStageFlagBits GetStageBit()
     {
         switch (this->mShaderType) {
             case ShaderType::Unknown:
-                Panic_("ShaderList", "Attempting to get shader stage bit of ShaderType::Unknown!", 0);
+                FxPanic_("ShaderList", "Attempting to get shader stage bit of ShaderType::Unknown!", 0);
             case ShaderType::Vertex:
                 return VK_SHADER_STAGE_VERTEX_BIT;
             case ShaderType::Fragment:

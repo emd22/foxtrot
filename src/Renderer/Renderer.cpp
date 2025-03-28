@@ -2,22 +2,22 @@
 #include "Core/Defines.hpp"
 
 #include <Renderer/FxRenderBackend.hpp>
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 
 AR_SET_MODULE_NAME("Renderer")
 
 FxRenderBackend *Renderer;
-VkRenderBackend *RendererVulkan;
+FxRenderBackendVulkan *RendererVulkan;
 
 void SetRendererBackend(FxRenderBackend *backend)
 {
     Renderer = backend;
-    RendererVulkan = static_cast<VkRenderBackend *>(Renderer);
+    RendererVulkan = static_cast<FxRenderBackendVulkan *>(Renderer);
 }
 
 void AssertRendererExists()
 {
     if (!Renderer->Initialized) {
-        Panic("Renderer not initialized!", 0);
+        FxPanic("Renderer not initialized!", 0);
     }
 }

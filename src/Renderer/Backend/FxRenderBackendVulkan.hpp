@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Renderer/FxRenderBackend.hpp>
+
 #include "ThirdParty/vk_mem_alloc.h"
 #include "vulkan/vulkan_core.h"
 
@@ -18,9 +19,9 @@ struct SDL_Window;
 
 namespace vulkan {
 
-class VkRenderBackend final : public FxRenderBackend {
+class FxRenderBackendVulkan final : public FxRenderBackend {
 public:
-    VkRenderBackend() = default;
+    FxRenderBackendVulkan() = default;
 
     using ExtensionList = StaticArray<VkExtensionProperties>;
     using ExtensionNames = std::vector<const char *>;
@@ -46,7 +47,7 @@ public:
     uint32 GetImageIndex() { return this->mImageIndex; }
     VmaAllocator *GetGPUAllocator() { return &this->GPUAllocator; }
 
-    ~VkRenderBackend()
+    ~FxRenderBackendVulkan()
     {
         this->Destroy();
     }

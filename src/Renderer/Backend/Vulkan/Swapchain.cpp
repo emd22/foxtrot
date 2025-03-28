@@ -2,7 +2,7 @@
 #include "Core/Defines.hpp"
 #include "Device.hpp"
 
-#include "../RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 
 #include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include "Renderer/Renderer.hpp"
@@ -66,7 +66,7 @@ void Swapchain::CreateImageViews()
 
         const VkResult status = vkCreateImageView(this->mDevice->Device, &create_info, nullptr, &this->ImageViews[i]);
         if (status != VK_SUCCESS) {
-            Panic("Could not create swapchain image view", status);
+            FxPanic("Could not create swapchain image view", status);
         }
     }
 }
@@ -79,7 +79,7 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface)
     const VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->mDevice->Physical, surface, &capabilities);
 
     if (result != VK_SUCCESS) {
-        Panic("Error retrieving surface capabilities", result);
+        FxPanic("Error retrieving surface capabilities", result);
     }
 
     const VkExtent2D extent = {
@@ -137,7 +137,7 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface)
     const VkResult status = vkCreateSwapchainKHR(this->mDevice->Device, &create_info, nullptr, &this->mSwapchain);
 
     if (status != VK_SUCCESS) {
-        Panic("Could not create swapchain", status);
+        FxPanic("Could not create swapchain", status);
     }
 }
 

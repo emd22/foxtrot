@@ -9,7 +9,7 @@ namespace vulkan {
 #include <Core/Log.hpp>
 #include <climits>
 
-#include <Renderer/Backend/RenderPanic.hpp>
+#include <Core/FxPanic.hpp>
 
 AR_SET_MODULE_NAME("Device")
 
@@ -102,7 +102,7 @@ void GPUDevice::QueryQueues()
     const auto indices = this->mQueueFamilies.GetQueueIndexList();
 
     if (indices.size() < 2) {
-        Panic("Not enough queue families", 0);
+        FxPanic("Not enough queue families", 0);
     }
 
     vkGetDeviceQueue(this->Device, indices[0], 0, &this->GraphicsQueue);
@@ -178,7 +178,7 @@ void GPUDevice::CreateLogicalDevice()
     const VkResult status = vkCreateDevice(this->Physical, &create_info, nullptr, &this->Device);
 
     if (status != VK_SUCCESS) {
-        Panic("Could not create logical device", status);
+        FxPanic("Could not create logical device", status);
     }
 
     this->QueryQueues();
@@ -229,7 +229,7 @@ void GPUDevice::PickPhysicalDevice()
 
 
     if (device_count == 0) {
-        Panic("No usable physical devices found (no vulkan support!)", 0);
+        FxPanic("No usable physical devices found (no vulkan support!)", 0);
     }
 
     StaticArray<VkPhysicalDevice> physical_devices(device_count);
@@ -244,7 +244,7 @@ void GPUDevice::PickPhysicalDevice()
         }
     }
     if (this->Physical == nullptr) {
-        Panic("Could not find a suitable physical device!", 0);
+        FxPanic("Could not find a suitable physical device!", 0);
     }
 }
 

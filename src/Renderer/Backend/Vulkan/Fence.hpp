@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include "Device.hpp"
 
 #include <vulkan/vulkan.h>
@@ -23,7 +23,7 @@ public:
 
         const VkResult status = vkCreateFence(this->mDevice->Device, &create_info, nullptr, &this->Fence);
         if (status != VK_SUCCESS) {
-            Panic_("Fence", "Could not create fence", status);
+            FxPanic_("Fence", "Could not create fence", status);
         }
     }
 
@@ -37,7 +37,7 @@ public:
         const VkResult status = vkWaitForFences(this->mDevice->Device, 1, &this->Fence, true, wait_options.Timeout);
 
         if (status != VK_SUCCESS) {
-            Panic_("Fence", "Could not create fence", status);
+            FxPanic_("Fence", "Could not create fence", status);
         }
     }
 
@@ -46,7 +46,7 @@ public:
         const VkResult status = vkResetFences(this->mDevice->Device, 1, &this->Fence);
 
         if (status != VK_SUCCESS) {
-            Panic_("Fence", "Could not reset fence", status);
+            FxPanic_("Fence", "Could not reset fence", status);
         }
     }
 

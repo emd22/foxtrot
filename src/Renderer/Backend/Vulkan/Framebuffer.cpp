@@ -1,6 +1,6 @@
 #include "Framebuffer.hpp"
 #include "Core/Defines.hpp"
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include "Renderer/Backend/Vulkan/Device.hpp"
 #include "Renderer/Renderer.hpp"
 #include <Core/Types.hpp>
@@ -29,7 +29,7 @@ void Framebuffer::Create(StaticArray<VkImageView> &image_views, GraphicsPipeline
     const VkResult status = vkCreateFramebuffer(this->mDevice->Device, &create_info, nullptr, &this->Framebuffer);
 
     if (status != VK_SUCCESS) {
-        Panic("Failed to create framebuffer", status);
+        FxPanic("Failed to create framebuffer", status);
     }
 }
 

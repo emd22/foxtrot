@@ -1,13 +1,11 @@
 #pragma once
 
-#include <Core/Types.hpp>
 #include <vulkan/vulkan.h>
 
-#include "../RenderPanic.hpp"
-#include "vulkan/vulkan_core.h"
+#include <Core/Types.hpp>
+#include <Core/FxPanic.hpp>
 
 #include "Device.hpp"
-
 
 namespace vulkan {
 
@@ -28,7 +26,7 @@ public:
         const VkResult status = vkCreateCommandPool(this->mDevice->Device, &create_info, nullptr, &this->CommandPool);
 
         if (status != VK_SUCCESS) {
-            Panic_("CommandPool", "Error creating command pool", 0);
+            FxPanic_("CommandPool", "Error creating command pool", 0);
         }
     }
 

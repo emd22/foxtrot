@@ -3,12 +3,13 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Core/FxPanic.hpp>
 
 #define VkTry(func_result, message)               \
     {                                             \
         const VkResult result__ = (func_result);  \
         if (result__ != VK_SUCCESS) {             \
-            Panic((message), result__);           \
+            FxPanic((message), result__);           \
         }                                         \
     }
 

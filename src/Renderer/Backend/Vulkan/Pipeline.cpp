@@ -8,7 +8,7 @@
 
 #include <Renderer/Renderer.hpp>
 
-#include "../RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 
 namespace vulkan {
 
@@ -175,7 +175,7 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
     const VkResult status = vkCreateGraphicsPipelines(this->mDevice->Device, nullptr, 1, &pipeline_info, nullptr, &this->Pipeline);
 
     if (status != VK_SUCCESS) {
-        Panic("Could not create graphics pipeline", status);
+        FxPanic("Could not create graphics pipeline", status);
     }
 }
 
@@ -207,7 +207,7 @@ void GraphicsPipeline::CreateLayout() {
     const VkResult status = vkCreatePipelineLayout(this->mDevice->Device, &create_info, nullptr, &this->Layout);
 
     if (status != VK_SUCCESS) {
-        Panic("Failed to create pipeline layout", status);
+        FxPanic("Failed to create pipeline layout", status);
     }
 }
 

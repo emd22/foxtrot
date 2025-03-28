@@ -8,7 +8,7 @@
 #include <cstring>
 #include <vulkan/vulkan.h>
 
-#include <Renderer/Backend/RenderPanic.hpp>
+#include <Core/FxPanic.hpp>
 
 #include <memory.h>
 
@@ -104,7 +104,7 @@ public:
         );
 
         if (status != VK_SUCCESS) {
-            Panic_("GPUBuffer", "Error allocating GPU buffer!", status);
+            FxPanic_("GPUBuffer", "Error allocating GPU buffer!", status);
         }
 
         this->Initialized = true;
@@ -127,7 +127,7 @@ public:
     void Upload(StaticArray<ElementType> &data)
     {
         if (!this->Initialized) {
-            Panic_("GPUBuffer", "Buffer not previously initialized on Upload()", 0);
+            FxPanic_("GPUBuffer", "Buffer not previously initialized on Upload()", 0);
         }
 
         const size_t data_size = this->ElementSize * data.Size;

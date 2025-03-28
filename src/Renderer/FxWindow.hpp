@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include <Core/Types.hpp>
 
 #include <SDL3/SDL.h>
@@ -22,7 +22,7 @@ public:
         this->mWindow = SDL_CreateWindow(title, width, height, window_flags);
 
         if (mWindow == nullptr) {
-            Panic_("Window", "Could not create SDL window (SDL err: %s)", SDL_GetError());
+            FxPanic_("Window", "Could not create SDL window (SDL err: %s)", SDL_GetError());
         }
     }
 

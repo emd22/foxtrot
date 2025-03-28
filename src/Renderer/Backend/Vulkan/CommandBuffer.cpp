@@ -1,5 +1,6 @@
 #include "CommandBuffer.hpp"
-#include "../RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
+
 #include "Device.hpp"
 #include "Renderer/Renderer.hpp"
 #include "vulkan/vulkan_core.h"
@@ -23,7 +24,7 @@ void CommandBuffer::Create(CommandPool *pool)
 
     const VkResult status = vkAllocateCommandBuffers(this->mDevice->Device, &buffer_info, &this->CommandBuffer);
     if (status != VK_SUCCESS) {
-        Panic("Could not allocate command buffer", status);
+        FxPanic("Could not allocate command buffer", status);
     }
 
 
@@ -33,7 +34,7 @@ void CommandBuffer::Create(CommandPool *pool)
 inline void CommandBuffer::CheckInitialized() const
 {
     if (!this->IsInitialized()) {
-        Panic("Command buffer has not been initialized!", 0);
+        FxPanic("Command buffer has not been initialized!", 0);
     }
 }
 
@@ -49,7 +50,7 @@ void CommandBuffer::Record()
 
     const VkResult status = vkBeginCommandBuffer(this->CommandBuffer, &begin_info);
     if (status != VK_SUCCESS) {
-        Panic("Failed to begin recording command buffer", status);
+        FxPanic("Failed to begin recording command buffer", status);
     }
 }
 
@@ -66,7 +67,7 @@ void CommandBuffer::End()
 
     const VkResult status = vkEndCommandBuffer(this->CommandBuffer);
     if (status != VK_SUCCESS) {
-        Panic("Failed to create command buffer!", status);
+        FxPanic("Failed to create command buffer!", status);
     }
 }
 

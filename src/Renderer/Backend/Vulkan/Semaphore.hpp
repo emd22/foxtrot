@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Backend/RenderPanic.hpp"
+#include <Core/FxPanic.hpp>
 #include "Device.hpp"
 #include "vulkan/vulkan_core.h"
 #include <vulkan/vulkan.h>
@@ -23,7 +23,7 @@ public:
         const VkResult status = vkCreateSemaphore(device->Device, &create_info, nullptr, &this->Semaphore);
 
         if (status != VK_SUCCESS) {
-            Panic_("Semaphore", "Could not create semaphore", status);
+            FxPanic_("Semaphore", "Could not create semaphore", status);
         }
     }
 

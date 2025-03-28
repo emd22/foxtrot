@@ -1,16 +1,14 @@
 
 
 #include "Core/Defines.hpp"
-#include "Renderer/Backend/Vulkan.hpp"
+#include "Renderer/Backend/FxRenderBackendVulkan.hpp"
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/ShaderList.hpp"
-#include "vulkan/vulkan_core.h"
 
 #define SDL_DISABLE_OLD_NAMES
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_revision.h>
-
 #include <SDL3/SDL_main.h>
 
 #include <Core/Types.hpp>
@@ -39,12 +37,12 @@ inline void ProcessEvents() {
 
 int main() {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-        Panic("Could not initialize SDL! (SDL err: %s)\n", SDL_GetError());
+        FxPanic("Could not initialize SDL! (SDL err: %s)\n", SDL_GetError());
     }
 
     auto window = FxWindow::New("Foxtrot Engine", 1024, 720);
 
-    vulkan::VkRenderBackend renderer_state;
+    vulkan::FxRenderBackendVulkan renderer_state;
     SetRendererBackend(&renderer_state);
 
     Renderer->SelectWindow(window);

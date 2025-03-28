@@ -48,7 +48,7 @@ public:
     FrameData *GetFrame();
 
     uint32 GetFrameNumber() { return this->mFrameNumber; }
-    uint32 GetImageIndex() { return this->mImageIndex = 0; }
+    uint32 GetImageIndex() { return this->mImageIndex; }
     VmaAllocator *GetGPUAllocator() { return &this->GPUAllocator; }
 
 private:

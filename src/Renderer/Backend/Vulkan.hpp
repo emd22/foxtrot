@@ -26,7 +26,7 @@ public:
     const uint32_t FramesInFlight = 2;
 
     VkRenderBackend() = default;
-    using ExtensionList = std::vector<VkExtensionProperties>;
+    using ExtensionList = StaticArray<VkExtensionProperties>;
     using ExtensionNames = std::vector<const char *>;
 
     void Init(Vec2i window_size);
@@ -64,11 +64,11 @@ private:
 
     FrameResult GetNextSwapchainImage(FrameData *frame);
 
-    ExtensionList QueryInstanceExtensions(bool invalidate_previous = false);
-    ExtensionNames MakeInstanceExtensionList(ExtensionNames user_requested_extensions);
-    ExtensionNames CheckExtensionsAvailable(ExtensionNames requested_extensions);
+    ExtensionList &QueryInstanceExtensions(bool invalidate_previous = false);
+    ExtensionNames MakeInstanceExtensionList(ExtensionNames &user_requested_extensions);
+    ExtensionNames CheckExtensionsAvailable(ExtensionNames &requested_extensions);
 
-    std::vector<VkLayerProperties> GetAvailableValidationLayers();
+    StaticArray<VkLayerProperties> GetAvailableValidationLayers();
 
 public:
     vulkan::Swapchain Swapchain;

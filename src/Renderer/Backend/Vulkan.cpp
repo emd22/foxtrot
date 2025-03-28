@@ -5,6 +5,7 @@
 
 #include <Util/Log.hpp>
 
+#include "Core/Util.hpp"
 #include "Renderer/Backend/Vulkan/Fence.hpp"
 #include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include "Renderer/Backend/Vulkan/Semaphore.hpp"
@@ -34,9 +35,9 @@ using ExtensionList = VkRenderBackend::ExtensionList;
 
 AR_SET_MODULE_NAME("Vulkan")
 
-ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames requested_extensions)
+ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames &requested_extensions)
 {
-    if (this->mAvailableExtensions.empty()) {
+    if (this->mAvailableExtensions.IsEmpty()) {
         this->QueryInstanceExtensions();
     }
 
@@ -44,7 +45,7 @@ ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames requeste
 
     for (const char *requested_name : requested_extensions) {
         bool found_extension = false;
-        for (const auto &extension : mAvailableExtensions) {
+        for (const auto &extension : this->mAvailableExtensions) {
             if (!strncmp(extension.extensionName, requested_name, 256)) {
                 found_extension = true;
                 break;
@@ -59,13 +60,15 @@ ExtensionNames VkRenderBackend::CheckExtensionsAvailable(ExtensionNames requeste
     return missing_extensions;
 }
 
-std::vector<VkLayerProperties> VkRenderBackend::GetAvailableValidationLayers()
+StaticArray<VkLayerProperties> VkRenderBackend::GetAvailableValidationLayers()
 {
     uint32 layer_count;
     vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
-    std::vector<VkLayerProperties> validation_layers(layer_count);
-    vkEnumerateInstanceLayerProperties(&layer_count, validation_layers.data());
+    StaticArray<VkLayerProperties> validation_layers;
+    validation_layers.InitSize(layer_count);
+
+    vkEnumerateInstanceLayerProperties(&layer_count, validation_layers.Data);
 
     return validation_layers;
 }
@@ -300,7 +303,7 @@ void VkRenderBackend::InitGPUAllocator()
     }
 }
 
-ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames user_requested_extensions)
+ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames &user_requested_extensions)
 {
     uint32 required_extension_count = 0;
     const char * const * required_extensions = SDL_Vulkan_GetInstanceExtensions(&required_extension_count);
@@ -321,16 +324,20 @@ ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames user_re
     return total_extensions;
 }
 
-ExtensionList VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
+ExtensionList &VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
 {
-    std::cout << "Query extensions\n";
+    Log::Debug("Query Extensions", 0);
 
-    if (!mAvailableExtensions.empty()) {
-        if (!invalidate_previous) {
-            return mAvailableExtensions;
+
+    if (this->mAvailableExtensions.IsNotEmpty()) {
+        if (invalidate_previous) {
+            this->mAvailableExtensions.Free();
         }
-        mAvailableExtensions.clear();
+        else {
+            return this->mAvailableExtensions;
+        }
     }
+
 
     // Get the count of the current extensions
     uint32_t extension_count = 0;
@@ -342,10 +349,10 @@ ExtensionList VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
     std::cout << "Ext count: " << extension_count << "\n";
 
     // resize to create the items in the vector
-    mAvailableExtensions.resize(extension_count);
+    this->mAvailableExtensions.InitSize(extension_count);
 
     // Get the available instance extensions
-    result = vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, mAvailableExtensions.data());
+    result = vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, this->mAvailableExtensions.Data);
     if (result != VK_SUCCESS) {
         throw std::runtime_error("Could not query instance extensions!");
     }
@@ -357,7 +364,7 @@ ExtensionList VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
         std::cout << extension.extensionName << " : " << extension.specVersion << "\n";
     }
 
-    return mAvailableExtensions;
+    return this->mAvailableExtensions;
 }
 
 FrameResult VkRenderBackend::BeginFrame(GraphicsPipeline &pipeline)

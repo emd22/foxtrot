@@ -22,7 +22,7 @@ public:
     ShaderInfo() = default;
 
     ShaderInfo(ShaderType type, VkShaderModule module)
-        : mShaderType(type), ShaderModule(module)
+        : ShaderModule(module), mShaderType(type)
     {
     }
 
@@ -59,7 +59,7 @@ public:
             shader_stages.Insert(ShaderInfo(ShaderType::Fragment, this->Fragment));
         }
 
-        return std::move(shader_stages);
+        return shader_stages;
     }
 
     VkShaderModule Vertex = nullptr;

@@ -146,6 +146,10 @@ public:
         return *this;
     }
 
+    void Clear() { this->Size = 0; }
+    bool IsEmpty() { return this->Size == 0; }
+    bool IsNotEmpty() { return !this->IsEmpty(); }
+
     void Insert(ElementType object)
     {
         if (this->Size + 1 > this->Capacity) {
@@ -198,7 +202,6 @@ public:
 
         this->Size = this->Capacity;
     }
-
 
 public:
     size_t Size = 0;

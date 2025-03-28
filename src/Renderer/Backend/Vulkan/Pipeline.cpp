@@ -4,7 +4,7 @@
 #include "Renderer/Backend/Vulkan/CommandBuffer.hpp"
 #include "vulkan/vulkan_core.h"
 
-#include <Util/Log.hpp>
+#include <Core/Log.hpp>
 
 #include <Renderer/Renderer.hpp>
 
@@ -71,20 +71,12 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
 
     VertexInfo vertex_info = MakeVertexInfo();
 
-    // VkPipelineVertexInputStateCreateInfo vertex_input_info = {
-    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-    //     .vertexBindingDescriptionCount = 1,
-    //     .pVertexBindingDescriptions = &vertex_info.binding,
-    //     .vertexAttributeDescriptionCount = (uint32)vertex_info.attributes.Size,
-    //     .pVertexAttributeDescriptions = vertex_info.attributes.Data,
-    // };
-
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &vertex_info.binding,
+        .vertexAttributeDescriptionCount = (uint32)vertex_info.attributes.Size,
+        .pVertexAttributeDescriptions = vertex_info.attributes.Data,
     };
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {

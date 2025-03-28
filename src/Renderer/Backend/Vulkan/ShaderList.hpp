@@ -5,7 +5,7 @@
 #include <Core/Types.hpp>
 #include <Core/StaticArray.hpp>
 
-#include <Util/Log.hpp>
+#include <Core/Log.hpp>
 #include <vulkan/vulkan.h>
 
 enum class ShaderType

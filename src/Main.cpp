@@ -18,6 +18,7 @@
 #include <Renderer/Renderer.hpp>
 
 #include <Renderer/FxWindow.hpp>
+#include <Renderer/FxMesh.hpp>
 
 static bool Running = true;
 
@@ -41,7 +42,7 @@ int main() {
         Panic("Could not initialize SDL! (SDL err: %s)\n", SDL_GetError());
     }
 
-    std::shared_ptr<FxWindow> window = FxWindow::New("Foxtrot Engine", 1024, 720);
+    auto window = FxWindow::New("Foxtrot Engine", 1024, 720);
 
     vulkan::VkRenderBackend renderer_state;
     SetRendererBackend(&renderer_state);
@@ -65,6 +66,13 @@ int main() {
         RendererVulkan->Swapchain.CreateSwapchainFramebuffers(&pipeline);
     }
 
+    StaticArray<Vertex> test_mesh_verts = {
+        Vertex{ .Position = { -1,  1, 0 } },
+        Vertex{ .Position = {  1,  1, 0 } },
+        Vertex{ .Position = {  0,  -1, 0 } },
+    };
+
+    FxMesh test_mesh(test_mesh_verts);
 
     while (Running) {
         ProcessEvents();
@@ -73,7 +81,7 @@ int main() {
             continue;
         }
 
-        vkCmdDraw(RendererVulkan->GetFrame()->CommandBuffer.CommandBuffer, 3, 1, 0, 0);
+        test_mesh.Render();
 
         Renderer->FinishFrame(pipeline);
     }

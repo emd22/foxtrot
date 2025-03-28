@@ -20,8 +20,6 @@ namespace vulkan {
 
 class VkRenderBackend final : public FxRenderBackend {
 public:
-    const uint32_t FramesInFlight = 2;
-
     VkRenderBackend() = default;
 
     using ExtensionList = StaticArray<VkExtensionProperties>;
@@ -45,14 +43,20 @@ public:
 
     FrameData *GetFrame();
 
-    uint32 GetFrameNumber() { return this->mFrameNumber; }
     uint32 GetImageIndex() { return this->mImageIndex; }
     VmaAllocator *GetGPUAllocator() { return &this->GPUAllocator; }
+
+    ~VkRenderBackend()
+    {
+        this->Destroy();
+    }
 
 private:
     void InitVulkan();
     void CreateSurfaceFromWindow();
+
     void InitGPUAllocator();
+    void DestroyGPUAllocator();
 
     void SubmitFrame();
     void PresentFrame();
@@ -85,7 +89,6 @@ private:
 
     ExtensionList mAvailableExtensions;
 
-    uint32 mFrameNumber = 0;
     uint32 mImageIndex = 0;
 };
 

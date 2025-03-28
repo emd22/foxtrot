@@ -50,6 +50,10 @@ public:
         size_t mIndex;
     };
 
+    StaticArray(ElementType *ptr, size_t size)
+        : Data(ptr), Size()
+    {
+    }
 
     StaticArray(size_t element_count)
         : Capacity(element_count)

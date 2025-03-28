@@ -3,7 +3,7 @@
 #include <Core/Defines.hpp>
 #include <Core/Types.hpp>
 
-#include <Util/Log.hpp>
+#include <Core/Log.hpp>
 
 #include "Renderer/Backend/Vulkan/Fence.hpp"
 #include "Renderer/Backend/Vulkan/Pipeline.hpp"
@@ -11,7 +11,9 @@
 #include "Vulkan/CommandPool.hpp"
 #include "Vulkan/CommandBuffer.hpp"
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -302,6 +304,11 @@ void VkRenderBackend::InitGPUAllocator()
     }
 }
 
+void VkRenderBackend::DestroyGPUAllocator()
+{
+    vmaDestroyAllocator(this->GPUAllocator);
+}
+
 ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames &user_requested_extensions)
 {
     uint32 required_extension_count = 0;
@@ -480,7 +487,12 @@ void VkRenderBackend::FinishFrame(GraphicsPipeline &pipeline)
     this->SubmitFrame();
     this->PresentFrame();
 
-    this->mFrameNumber = (this->mFrameNumber + 1) % this->FramesInFlight;
+    this->ProcessDeletionQueue();
+
+    this->mInternalFrameCounter++;
+
+    // better to do one division per frame as opposed to one every GetFrameNumber()
+    this->mFrameNumber = (mInternalFrameCounter) % this->FramesInFlight;
 }
 
 FrameResult VkRenderBackend::GetNextSwapchainImage(FrameData *frame)
@@ -527,6 +539,14 @@ void VkRenderBackend::Destroy()
 {
     this->GetDevice()->WaitForIdle();
 
+    while (!this->mDeletionQueue.empty()) {
+        this->ProcessDeletionQueue(true);
+        // insert a small delay to avoid the processor spinning out while
+        // waiting for an object. this allows handing the core off to other threads.
+        std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+    }
+
+    this->DestroyGPUAllocator();
 
     this->Swapchain.Destroy();
     this->DestroyFrames();

@@ -2,7 +2,7 @@
 
 #include <Core/Defines.hpp>
 
-#include <Util/Log.hpp>
+#include <Core/Log.hpp>
 #include "Vulkan/Util.hpp"
 
 #include <vulkan/vulkan.h>

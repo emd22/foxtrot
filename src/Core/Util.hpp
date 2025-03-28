@@ -5,7 +5,7 @@
 template <typename EnumClass>
 std::underlying_type<EnumClass>::type EnumToInt(EnumClass value)
 {
-    static_cast<typename std::underlying_type<EnumClass>::type>(value);
+    return static_cast<typename std::underlying_type<EnumClass>::type>(value);
 }
 
 // https://en.cppreference.com/w/cpp/types/remove_reference

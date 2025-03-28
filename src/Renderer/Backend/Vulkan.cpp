@@ -5,7 +5,6 @@
 
 #include <Util/Log.hpp>
 
-#include "Core/Util.hpp"
 #include "Renderer/Backend/Vulkan/Fence.hpp"
 #include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include "Renderer/Backend/Vulkan/Semaphore.hpp"
@@ -517,7 +516,8 @@ void VkRenderBackend::CreateSurfaceFromWindow()
         Panic("No window attached! use VkRenderBackend::SelectWindow()", 0);
     }
 
-    bool success = SDL_Vulkan_CreateSurface(this->mWindow, this->mInstance, nullptr, &this->mWindowSurface);
+    bool success = SDL_Vulkan_CreateSurface(this->mWindow->GetWindow(), this->mInstance, nullptr, &this->mWindowSurface);
+
     if (!success) {
         Panic("Could not attach Vulkan instance to window! (SDL err: %s)", SDL_GetError());
     }

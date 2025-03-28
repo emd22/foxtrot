@@ -5,6 +5,7 @@
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/ShaderList.hpp"
+#include "vulkan/vulkan_core.h"
 
 #define SDL_DISABLE_OLD_NAMES
 #include <SDL3/SDL.h>
@@ -16,32 +17,11 @@
 
 #include <Renderer/Renderer.hpp>
 
+#include <Renderer/FxWindow.hpp>
+
 static bool Running = true;
 
 AR_SET_MODULE_NAME("Main")
-
-class Window {
-public:
-    Window(const std::string &title, int32 width, int32 height) {
-        const uint64 window_flags = SDL_WINDOW_VULKAN;
-
-        mWindow = SDL_CreateWindow(title.c_str(), width, height, window_flags);
-
-        if (mWindow == nullptr) {
-            Panic("Could not create SDL window (SDL err: %s)", SDL_GetError());
-        }
-    }
-
-    SDL_Window *GetWindow() { return this->mWindow; }
-
-    ~Window() {
-        SDL_DestroyWindow(mWindow);
-    }
-
-private:
-    SDL_Window *mWindow;
-};
-
 
 inline void ProcessEvents() {
     SDL_Event event;
@@ -61,16 +41,13 @@ int main() {
         Panic("Could not initialize SDL! (SDL err: %s)\n", SDL_GetError());
     }
 
-    Window window("Test window", 1024, 720);
+    std::shared_ptr<FxWindow> window = FxWindow::New("Foxtrot Engine", 1024, 720);
 
+    vulkan::VkRenderBackend renderer_state;
+    SetRendererBackend(&renderer_state);
 
-    RendererStateInstance renderer_state;
-    SetRendererState(&renderer_state);
-
-    auto *ren = &RendererState->Vulkan;
-
-    ren->SelectWindow(window.GetWindow());
-    ren->Init(Vec2i(1024, 720));
+    Renderer->SelectWindow(window);
+    Renderer->Init(Vec2i(1024, 720));
 
     vulkan::GraphicsPipeline pipeline;
 
@@ -85,18 +62,20 @@ int main() {
 
         pipeline.Create(shader_list);
 
-        ren->Swapchain.CreateSwapchainFramebuffers(&pipeline);
+        RendererVulkan->Swapchain.CreateSwapchainFramebuffers(&pipeline);
     }
 
 
     while (Running) {
         ProcessEvents();
 
-        if (ren->BeginFrame(pipeline) != vulkan::FrameResult::Success) {
+        if (Renderer->BeginFrame(pipeline) != FrameResult::Success) {
             continue;
         }
 
-        ren->FinishFrame(pipeline);
+        vkCmdDraw(RendererVulkan->GetFrame()->CommandBuffer.CommandBuffer, 3, 1, 0, 0);
+
+        Renderer->FinishFrame(pipeline);
     }
 
     return 0;

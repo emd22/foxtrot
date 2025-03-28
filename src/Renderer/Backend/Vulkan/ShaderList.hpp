@@ -6,7 +6,6 @@
 #include <Core/StaticArray.hpp>
 
 #include <Util/Log.hpp>
-
 #include <vulkan/vulkan.h>
 
 enum class ShaderType
@@ -25,6 +24,8 @@ public:
         : ShaderModule(module), mShaderType(type)
     {
     }
+
+
 
     VkShaderStageFlagBits GetStageBit()
     {
@@ -62,6 +63,7 @@ public:
         return shader_stages;
     }
 
+public:
     VkShaderModule Vertex = nullptr;
     VkShaderModule Fragment = nullptr;
 };

@@ -6,9 +6,9 @@
 
 #include <cstdio>
 
-static void NoMemError()
+static inline void NoMemError()
 {
-    puts("StaticArray: out of memory error");
+    puts("StaticArray: out of memory");
     std::terminate();
 }
 
@@ -57,7 +57,7 @@ public:
         try {
             this->Data = new ElementType[element_count];
         }
-        catch (std::exception &e) {
+        catch (std::bad_alloc &e) {
             NoMemError();
         }
     }
@@ -167,7 +167,7 @@ public:
         try {
             this->Data = new ElementType[element_count];
         }
-        catch (std::exception &e) {
+        catch (std::bad_alloc &e) {
             NoMemError();
         }
 

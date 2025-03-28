@@ -37,8 +37,14 @@ public:
             .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
         };
 
+        const VkResult status = vmaCreateBuffer(
+            RendererVulkan->GPUAllocator,
+            &create_info,
+            &alloc_create_info,
+            &this->Buffer,
+            &this->Allocation
+        );
 
-        const VkResult status = vmaCreateBuffer(RendererState->Vulkan.GPUAllocator, &this->Buffer, &this->Allocation);
         if (status != VK_SUCCESS) {
             Panic_("GPUBuffer", "Error allocating GPU buffer!", status);
         }
@@ -52,7 +58,7 @@ public:
             return;
         }
 
-        vmaDestroyBuffer(RendererState->Vulkan.GPUAllocator, &this->Buffer, &this->Allocation);
+        vmaDestroyBuffer(RendererVulkan->GPUAllocator, &this->Buffer, &this->Allocation);
 
         this->Initialized = false;
     }

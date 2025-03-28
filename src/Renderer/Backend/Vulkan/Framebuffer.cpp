@@ -24,7 +24,7 @@ void Framebuffer::Create(StaticArray<VkImageView> &image_views, GraphicsPipeline
         .layers = 1,
     };
 
-    this->mDevice = RendererState->Vulkan.GetDevice();
+    this->mDevice = RendererVulkan->GetDevice();
 
     const VkResult status = vkCreateFramebuffer(this->mDevice->Device, &create_info, nullptr, &this->Framebuffer);
 

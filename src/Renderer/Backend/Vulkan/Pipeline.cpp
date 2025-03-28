@@ -32,7 +32,7 @@ VertexInfo GraphicsPipeline::MakeVertexInfo() {
 }
 
 void GraphicsPipeline::Create(ShaderList shader_list) {
-    this->mDevice = RendererState->Vulkan.GetDevice();
+    this->mDevice = RendererVulkan->GetDevice();
 
     VkSpecializationInfo specialization_info = {
         .mapEntryCount = 0,
@@ -93,7 +93,7 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    const Vec2i extent = RendererState->Vulkan.Swapchain.Extent;
+    const Vec2i extent = RendererVulkan->Swapchain.Extent;
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -157,7 +157,7 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
 
 
     this->CreateLayout();
-    this->RenderPass.Create(*this->mDevice, RendererState->Vulkan.Swapchain);
+    this->RenderPass.Create(*this->mDevice, RendererVulkan->Swapchain);
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,

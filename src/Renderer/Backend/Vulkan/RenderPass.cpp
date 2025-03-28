@@ -70,20 +70,18 @@ void RenderPass::Begin() {
         Panic("Render pass has not been previously created", 0);
     }
 
-    VkRenderBackend *renderer = &RendererState->Vulkan;
-
     VkClearValue clear_color = {};
     clear_color.color = {{1.0f, 1.0f, 1.0f, 1.0f}};
 
-    FrameData *frame = renderer->GetFrame();
-    const auto extent = renderer->Swapchain.Extent;
+    FrameData *frame = RendererVulkan->GetFrame();
+    const auto extent = RendererVulkan->Swapchain.Extent;
 
     //Log::Debug("Amount of framebuffers: %d", renderer->Swapchain.Framebuffers.Size);
 
     VkRenderPassBeginInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = this->RenderPass,
-        .framebuffer = renderer->Swapchain.Framebuffers[renderer->GetImageIndex()].Framebuffer,
+        .framebuffer = RendererVulkan->Swapchain.Framebuffers[RendererVulkan->GetImageIndex()].Framebuffer,
         .renderArea.offset = {0, 0},
         .renderArea.extent = {(uint32)extent.Width(), (uint32)extent.Height()},
         .clearValueCount = 1,

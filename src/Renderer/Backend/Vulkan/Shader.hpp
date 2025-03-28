@@ -37,4 +37,27 @@ public:
     ShaderType Type = ShaderType::Unknown;
 };
 
+// #include <Renderer/FxShader.hpp>
+
+// class FxVulkanShader final : public FxShader
+// {
+// public:
+//     FxVulkanShader() = default;
+//     FxVulkanShader(FxShader::Type type, std::string &path)
+//     {
+//         this->Load(type, path);
+//     }
+
+//     void Load(FxShader::Type, std::string &path) override;
+//     void Destroy() override;
+
+//     Type GetType() { return this->mType; }
+
+//     ~FxVulkanShader()
+//     {
+//         this->Destroy();
+//     }
+
+// };
+
 }; // namespace vulkan

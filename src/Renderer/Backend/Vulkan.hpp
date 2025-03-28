@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderBackend.hpp"
+#include <Renderer/FxRenderBackend.hpp>
 #include "ThirdParty/vk_mem_alloc.h"
 #include "vulkan/vulkan_core.h"
 
@@ -8,34 +8,32 @@
 #include "Vulkan/Device.hpp"
 #include "Vulkan/FrameData.hpp"
 
+#include <Renderer/FxWindow.hpp>
+
+#include <memory>
 #include <vulkan/vulkan.hpp>
+
 
 struct SDL_Window;
 
 namespace vulkan {
 
-enum class FrameResult
-{
-    Success,
-    GraphicsOutOfDate,
-    RenderError,
-};
-
-class VkRenderBackend final : RenderBackend {
+class VkRenderBackend final : public FxRenderBackend {
 public:
     const uint32_t FramesInFlight = 2;
 
     VkRenderBackend() = default;
+
     using ExtensionList = StaticArray<VkExtensionProperties>;
     using ExtensionNames = std::vector<const char *>;
 
-    void Init(Vec2i window_size);
-    void Destroy();
+    void Init(Vec2i window_size) override;
+    void Destroy() override;
 
-    FrameResult BeginFrame(GraphicsPipeline &pipeline);
-    void FinishFrame(GraphicsPipeline &pipeline);
+    FrameResult BeginFrame(GraphicsPipeline &pipeline) override;
+    void FinishFrame(GraphicsPipeline &pipeline) override;
 
-    void SelectWindow(SDL_Window *window)
+    void SelectWindow(std::shared_ptr<FxWindow> window) override
     {
         this->mWindow = window;
     }
@@ -74,17 +72,14 @@ public:
     vulkan::Swapchain Swapchain;
     StaticArray<FrameData> Frames;
 
-    bool Initialized = false;
-
     VmaAllocator GPUAllocator = nullptr;
 private:
 
     VkInstance mInstance = nullptr;
     VkSurfaceKHR mWindowSurface = nullptr;
 
-    SDL_Window *mWindow = nullptr;
+    std::shared_ptr<FxWindow> mWindow = nullptr;
     vulkan::GPUDevice mDevice;
-
 
     VkDebugUtilsMessengerEXT mDebugMessenger;
 

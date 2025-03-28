@@ -1,27 +1,11 @@
 #pragma once
 
-#include "Backend/Vulkan.hpp"
+#include <Renderer/Backend/Vulkan.hpp>
+#include <Renderer/FxRenderBackend.hpp>
 
-struct RendererStateInstance
-{
-public:
-    void Destroy()
-    {
-        if (this->Vulkan.Initialized) {
-            this->Vulkan.Destroy();
-        }
-    }
-
-    ~RendererStateInstance()
-    {
-        this->Destroy();
-    }
-
-    vulkan::VkRenderBackend Vulkan;
-};
-
-void SetRendererState(RendererStateInstance *instance);
+void SetRendererBackend(FxRenderBackend *backend);
 
 void AssertRendererExists();
 
-extern RendererStateInstance *RendererState;
+extern FxRenderBackend *Renderer;
+extern VkRenderBackend *RendererVulkan;

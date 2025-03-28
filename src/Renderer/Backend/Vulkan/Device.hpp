@@ -65,9 +65,12 @@ public:
     }
 
     void Create(VkInstance instance, VkSurfaceKHR surface);
+    void Destroy();
 
     void PickPhysicalDevice();
     void CreateLogicalDevice();
+
+    void WaitForIdle();
 
     VkSurfaceFormatKHR GetBestSurfaceFormat();
 

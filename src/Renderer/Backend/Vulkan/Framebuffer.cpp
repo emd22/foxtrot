@@ -10,7 +10,7 @@ namespace vulkan {
 
 AR_SET_MODULE_NAME("Framebuffer")
 
-void Framebuffer::Create(StaticArray<VkImageView> image_views, GraphicsPipeline pipeline, Vec2i size)
+void Framebuffer::Create(StaticArray<VkImageView> &image_views, GraphicsPipeline &pipeline, Vec2i size)
 {
     AssertRendererExists();
 
@@ -24,7 +24,7 @@ void Framebuffer::Create(StaticArray<VkImageView> image_views, GraphicsPipeline 
         .layers = 1,
     };
 
-    this->mDevice = RendererState.Vulkan.GetDevice();
+    this->mDevice = RendererState->Vulkan.GetDevice();
 
     const VkResult status = vkCreateFramebuffer(this->mDevice->Device, &create_info, nullptr, &this->Framebuffer);
 

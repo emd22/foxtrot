@@ -6,6 +6,7 @@
 #include <Util/Log.hpp>
 
 #include "Renderer/Backend/Vulkan/Fence.hpp"
+#include "Renderer/Backend/Vulkan/Pipeline.hpp"
 #include "Renderer/Backend/Vulkan/Semaphore.hpp"
 #include "Vulkan/CommandPool.hpp"
 #include "Vulkan/CommandBuffer.hpp"
@@ -17,6 +18,9 @@
 
 #include "Vulkan/Util.hpp"
 #include "RenderPanic.hpp"
+#include "vulkan/vulkan_core.h"
+
+#include <ThirdParty/vk_mem_alloc.h>
 
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL.h>
@@ -74,7 +78,9 @@ void VkRenderBackend::Init(Vec2i window_size)
     this->CreateSurfaceFromWindow();
 
     this->mDevice.Create(this->mInstance, this->mWindowSurface);
-    this->Swapchain.Init(window_size, this->mWindowSurface, this->mDevice);
+
+    this->InitGPUAllocator();
+    this->Swapchain.Init(window_size, this->mWindowSurface, &this->mDevice);
 
     this->InitFrames();
 
@@ -192,14 +198,14 @@ uint32 DebugMessageCallback(
     const char * message = callback_data->pMessage;
     const char *fmt = "VkValidator: %s";
 
-    if (!(message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)) {
-        Log::Info(fmt, message);
+    if ((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)) {
+        Log::Error(fmt, message);
     }
-    else if (!(message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) {
+    else if ((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) {
         Log::Warning(fmt, message);
     }
-    else if (!(message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)) {
-        Log::Error(fmt, message);
+    else if ((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)) {
+        Log::Info(fmt, message);
     }
     else {
         Log::Debug(fmt, message);
@@ -278,6 +284,22 @@ void DestroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messeng
     DestroyDebugUtilsMessengerEXT(instance, messenger, nullptr);
 }
 
+void VkRenderBackend::InitGPUAllocator()
+{
+    const GPUDevice *device = this->GetDevice();
+
+    const VmaAllocatorCreateInfo create_info = {
+        .physicalDevice = device->Physical,
+        .device = device->Device,
+        .instance = this->mInstance
+    };
+
+    const VkResult status = vmaCreateAllocator(&create_info, &this->GPUAllocator);
+    if (status != VK_SUCCESS) {
+        Panic("Could not create VMA allocator!", status);
+    }
+}
+
 ExtensionNames VkRenderBackend::MakeInstanceExtensionList(ExtensionNames user_requested_extensions)
 {
     uint32 required_extension_count = 0;
@@ -338,6 +360,150 @@ ExtensionList VkRenderBackend::QueryInstanceExtensions(bool invalidate_previous)
     return mAvailableExtensions;
 }
 
+FrameResult VkRenderBackend::BeginFrame(GraphicsPipeline &pipeline)
+{
+    FrameData *frame = this->GetFrame();
+
+    frame->InFlight.WaitFor();
+
+    FrameResult result = this->GetNextSwapchainImage(frame);
+    if (result != FrameResult::Success) {
+        return result;
+    }
+
+    frame->InFlight.Reset();
+
+    frame->CommandBuffer.Reset();
+    frame->CommandBuffer.Record();
+
+    pipeline.RenderPass.Begin();
+    pipeline.Bind(frame->CommandBuffer);
+
+    const int32 width = this->Swapchain.Extent.Width();
+    const int32 height = this->Swapchain.Extent.Height();
+
+    const VkViewport viewport = {
+        .x = 0, .y = 0,
+        .width = (float32)width,
+        .height = (float32)height,
+        .minDepth = 0.0,
+        .maxDepth = 1.0,
+    };
+
+    vkCmdSetViewport(frame->CommandBuffer.CommandBuffer, 0, 1, &viewport);
+
+    const VkRect2D scissor = {
+        .offset = { .x = 0, .y = 0 },
+        .extent = { .width = (uint32)width, .height = (uint32)height }
+    };
+
+    vkCmdSetScissor(frame->CommandBuffer.CommandBuffer, 0, 1, &scissor);
+
+    return FrameResult::Success;
+}
+
+void VkRenderBackend::SubmitFrame()
+{
+    FrameData *frame = this->GetFrame();
+
+    const VkPipelineStageFlags wait_stages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    };
+
+    const VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &frame->ImageAvailable.Semaphore,
+        .pWaitDstStageMask = wait_stages,
+        // command buffers
+        .commandBufferCount = 1,
+        .pCommandBuffers = &frame->CommandBuffer.CommandBuffer,
+        // signal semaphores
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &frame->RenderFinished.Semaphore
+    };
+
+    VkTry(
+        vkQueueSubmit(this->GetDevice()->GraphicsQueue, 1, &submit_info, frame->InFlight.Fence),
+        "Error submitting draw buffer"
+    );
+}
+
+void VkRenderBackend::PresentFrame()
+{
+    FrameData *frame = this->GetFrame();
+
+    if (this->Swapchain.Initialized != true) {
+        Panic("Swapchain not initialized!", 0);
+    }
+
+    const VkSwapchainKHR swapchains[] = {
+        this->Swapchain.GetSwapchain(),
+    };
+
+    const VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &frame->RenderFinished.Semaphore,
+
+        .swapchainCount = 1,
+        .pSwapchains = swapchains,
+
+        .pImageIndices = &this->mImageIndex,
+
+        .pResults = nullptr,
+    };
+
+    const VkResult status = vkQueuePresentKHR(this->GetDevice()->PresentQueue, &present_info);
+
+    if (status == VK_SUCCESS) { }
+    else if (status == VK_ERROR_OUT_OF_DATE_KHR || status == VK_SUBOPTIMAL_KHR) {
+        // Swapchain.Rebuild()..
+    }
+    else {
+        Log::Error("Error submitting present queue", status);
+    }
+}
+
+void VkRenderBackend::FinishFrame(GraphicsPipeline &pipeline)
+{
+    pipeline.RenderPass.End();
+
+    this->GetFrame()->CommandBuffer.End();
+
+    this->SubmitFrame();
+    this->PresentFrame();
+
+    this->mFrameNumber = (this->mFrameNumber + 1) % this->FramesInFlight;
+}
+
+FrameResult VkRenderBackend::GetNextSwapchainImage(FrameData *frame)
+{
+    const uint64 timeout = UINT64_MAX; // TODO: change this value and handle AcquireNextImage errors correctly
+
+    const VkResult result = vkAcquireNextImageKHR(
+        this->GetDevice()->Device,
+        this->Swapchain.GetSwapchain(),
+        timeout,
+        frame->ImageAvailable.Semaphore,
+        nullptr,
+        &this->mImageIndex
+    );
+
+    if (result == VK_SUCCESS) {
+        return FrameResult::Success;
+    }
+    else if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        // Swapchain.Rebuild()..
+        return FrameResult::GraphicsOutOfDate;
+    }
+    else {
+        Log::Error("Error getting next swapchain image!", result);
+    }
+
+    return FrameResult::RenderError;
+}
+
 void VkRenderBackend::CreateSurfaceFromWindow()
 {
     if (this->mWindow == nullptr) {
@@ -352,11 +518,19 @@ void VkRenderBackend::CreateSurfaceFromWindow()
 
 void VkRenderBackend::Destroy()
 {
-    DestroyDebugMessenger(this->mInstance, this->mDebugMessenger);
+    this->GetDevice()->WaitForIdle();
+
+
+    this->Swapchain.Destroy();
+    this->DestroyFrames();
 
     if (this->mWindowSurface) {
         vkDestroySurfaceKHR(this->mInstance, this->mWindowSurface, nullptr);
     }
+
+    this->GetDevice()->Destroy();
+
+    DestroyDebugMessenger(this->mInstance, this->mDebugMessenger);
 
     vkDestroyInstance(this->mInstance, nullptr);
 

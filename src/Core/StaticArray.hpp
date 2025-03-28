@@ -1,16 +1,14 @@
 #pragma once
 
 #include <cstddef>
-#include <exception>
 #include <stdexcept>
 #include <initializer_list>
 
 #include <cstdio>
-#include <vector>
 
 static void NoMemError()
 {
-    printf("StaticArray: memory error\n");
+    puts("StaticArray: out of memory error");
     std::terminate();
 }
 
@@ -66,11 +64,22 @@ public:
 
     StaticArray(std::initializer_list<ElementType> list)
     {
-        this->InitCapacity(list.size());
+        this->InitSize(list.size());
 
+        int index = 0;
         for (const ElementType obj : list) {
-            this->Data[this->Size++] = obj;
+            this->Data[index] = obj;
+            index++;
         }
+    }
+
+    StaticArray(StaticArray<ElementType> &&other)
+    {
+        this->Data = std::move(other.Data);
+        other.Data = nullptr;
+
+        this->Capacity = other.Capacity;
+        this->Size = other.Size;
     }
 
     StaticArray() = default;
@@ -83,7 +92,10 @@ public:
     void Free()
     {
         if (this->Data != nullptr) {
+            printf("Freeing StaticArray of size %lu (type: %s)\n", this->Size, typeid(ElementType).name());
             delete this->Data;
+
+            this->Data = nullptr;
         }
     }
 
@@ -123,13 +135,31 @@ public:
         return this->Data[index];
     }
 
+    StaticArray<ElementType> operator=(StaticArray<ElementType> &&other)
+    {
+        this->Data = std::move(other.Data);
+        other.Data = nullptr;
+
+        this->Size = other.Size;
+        this->Capacity = other.Capacity;
+
+        return *this;
+    }
+
     void Insert(ElementType object)
     {
+        if (this->Size + 1 > this->Capacity) {
+            throw std::out_of_range("StaticArray insert is larger than the capacity!");
+        }
         this->Data[this->Size++] = object;
     }
 
     void InitCapacity(size_t element_count)
     {
+        if (this->Data != nullptr) {
+            throw std::runtime_error("StaticArray has already been previously initialized, cannot InitCapacity!");
+        }
+
         try {
             this->Data = new ElementType[element_count];
         }

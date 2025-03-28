@@ -53,7 +53,7 @@ void Shader::Destroy()
         return;
     }
 
-    vulkan::GPUDevice *device = RendererState.Vulkan.GetDevice();
+    vulkan::GPUDevice *device = RendererState->Vulkan.GetDevice();
     vkDestroyShaderModule(device->Device, this->ShaderModule, nullptr);
 }
 
@@ -65,7 +65,7 @@ void Shader::CreateShaderModule(std::ios::pos_type file_size, uint32 *shader_dat
         .pCode = (uint32_t *)shader_data,
     };
 
-    vulkan::GPUDevice *device = RendererState.Vulkan.GetDevice();
+    vulkan::GPUDevice *device = RendererState->Vulkan.GetDevice();
 
     const VkResult status = vkCreateShaderModule(device->Device, &create_info, nullptr, &this->ShaderModule);
 

@@ -14,33 +14,34 @@ AR_SET_MODULE_NAME("Swapchain")
 
 namespace vulkan {
 
-void Swapchain::Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device)
+void Swapchain::Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice *device)
 {
     AssertRendererExists();
 
-    this->CreateSwapchain(size, surface, device);
-    this->CreateSwapchainImages(device);
-    this->CreateImageViews(device);
+    this->mDevice = device;
+
+    this->CreateSwapchain(size, surface);
+    this->CreateSwapchainImages();
+    this->CreateImageViews();
 
     this->Initialized = true;
 }
 
-void Swapchain::CreateSwapchainImages(GPUDevice &device)
+void Swapchain::CreateSwapchainImages()
 {
     uint32 image_count;
 
-    vkGetSwapchainImagesKHR(device.Device, this->mSwapchain, &image_count, nullptr);
+    vkGetSwapchainImagesKHR(this->mDevice->Device, this->mSwapchain, &image_count, nullptr);
 
-    this->Images.InitCapacity(image_count);
-    vkGetSwapchainImagesKHR(device.Device, this->mSwapchain, &image_count, this->Images.Data);
+    this->Images.InitSize(image_count);
+    vkGetSwapchainImagesKHR(this->mDevice->Device, this->mSwapchain, &image_count, this->Images.Data);
 }
 
-void Swapchain::CreateImageViews(GPUDevice &device)
+void Swapchain::CreateImageViews()
 {
     const uint64 images_size = this->Images.Size;
 
-    this->ImageViews.InitCapacity(images_size);
-
+    this->ImageViews.InitSize(images_size);
 
     for (int32 i = 0; i < images_size; i++) {
         const VkImageViewCreateInfo create_info = {
@@ -63,19 +64,19 @@ void Swapchain::CreateImageViews(GPUDevice &device)
             }
         };
 
-        const VkResult status = vkCreateImageView(device.Device, &create_info, nullptr, &this->ImageViews[i]);
+        const VkResult status = vkCreateImageView(this->mDevice->Device, &create_info, nullptr, &this->ImageViews[i]);
         if (status != VK_SUCCESS) {
             Panic("Could not create swapchain image view", status);
         }
     }
 }
 
-void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device)
+void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface)
 {
     this->Extent = size;
 
     VkSurfaceCapabilitiesKHR capabilities;
-    const VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.Physical, surface, &capabilities);
+    const VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->mDevice->Physical, surface, &capabilities);
 
     if (result != VK_SUCCESS) {
         Panic("Error retrieving surface capabilities", result);
@@ -94,7 +95,7 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &de
 
     Log::Info("Swapchain - Min:%d, Max:%d, Selected:%d", capabilities.minImageCount, capabilities.maxImageCount, image_count);
 
-    this->SurfaceFormat = device.GetBestSurfaceFormat();
+    this->SurfaceFormat = this->mDevice->GetBestSurfaceFormat();
 
     const VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -120,7 +121,7 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &de
         .oldSwapchain = this->mSwapchain,
     };
 
-    if (device.mQueueFamilies.IsGraphicsAlsoPresent()) {
+    if (this->mDevice->mQueueFamilies.IsGraphicsAlsoPresent()) {
         create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         create_info.queueFamilyIndexCount = 0;
         create_info.pQueueFamilyIndices = nullptr;
@@ -129,11 +130,11 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &de
         create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         create_info.queueFamilyIndexCount = 2;
 
-        const auto indices = device.mQueueFamilies.GetQueueIndexList();
+        const auto indices = this->mDevice->mQueueFamilies.GetQueueIndexList();
         create_info.pQueueFamilyIndices = indices.data();
     }
 
-    const VkResult status = vkCreateSwapchainKHR(device.Device, &create_info, nullptr, &this->mSwapchain);
+    const VkResult status = vkCreateSwapchainKHR(this->mDevice->Device, &create_info, nullptr, &this->mSwapchain);
 
     if (status != VK_SUCCESS) {
         Panic("Could not create swapchain", status);
@@ -143,18 +144,46 @@ void Swapchain::CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &de
 void Swapchain::CreateSwapchainFramebuffers(GraphicsPipeline *pipeline)
 {
     Log::Debug("Image view count: %d", this->ImageViews.Size);
+    this->Framebuffers.Free();
     this->Framebuffers.InitSize(this->ImageViews.Size);
 
-    StaticArray<VkImageView> temp_views(1);
-    temp_views.InitSize();
+    StaticArray<VkImageView> temp_views;
+    temp_views.InitSize(1);
 
     for (int i = 0; i < this->ImageViews.Size; i++) {
-        temp_views.Data[0] = this->ImageViews[i];
+        temp_views[0] = this->ImageViews[i];
 
-        this->Framebuffers.Data[i].Create(temp_views, *pipeline, this->Extent);
+        this->Framebuffers[i].Create(temp_views, *pipeline, this->Extent);
     }
 
+    Log::Debug("Create framebuffers", 0);
+
     this->mPipeline = pipeline;
+}
+
+void Swapchain::DestroyFramebuffersAndImageViews()
+{
+    for (int i = 0; i < this->ImageViews.Size; i++) {
+        this->Framebuffers[i].Destroy();
+        vkDestroyImageView(this->mDevice->Device, this->ImageViews[i], nullptr);
+    }
+
+    this->Framebuffers.Free();
+    this->ImageViews.Free();
+}
+
+void Swapchain::DestroyInternalSwapchain()
+{
+    vkDestroySwapchainKHR(this->mDevice->Device, this->mSwapchain, nullptr);
+}
+
+void Swapchain::Destroy()
+{
+    this->DestroyFramebuffersAndImageViews();
+    this->Images.Free();
+    this->DestroyInternalSwapchain();
+
+    this->Initialized = false;
 }
 
 Swapchain::~Swapchain()

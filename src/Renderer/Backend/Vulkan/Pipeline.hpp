@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Backend/Vulkan/CommandBuffer.hpp"
 #include "ShaderList.hpp"
 #include "RenderPass.hpp"
 
@@ -28,7 +29,12 @@ public:
     void Create(ShaderList shader_list);
     void Destroy();
 
-    void Bind(VkCommandBuffer command_buffer);
+    void Bind(CommandBuffer &command_buffer);
+
+    ~GraphicsPipeline()
+    {
+        this->Destroy();
+    }
 
 private:
     VertexInfo MakeVertexInfo();

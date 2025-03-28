@@ -1,6 +1,7 @@
 
 #include "Pipeline.hpp"
 #include "Core/Defines.hpp"
+#include "Renderer/Backend/Vulkan/CommandBuffer.hpp"
 #include "vulkan/vulkan_core.h"
 
 #include <Util/Log.hpp>
@@ -21,15 +22,17 @@ VertexInfo GraphicsPipeline::MakeVertexInfo() {
     };
 
     StaticArray<VkVertexInputAttributeDescription> attribs = {
-        { 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 },
-        { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, Normal) },
+        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 },
+        { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, Normal) },
     };
+
+    Log::Debug("Amount of attributes: %d", attribs.Size);
 
     return { binding_desc, std::move(attribs) };
 }
 
 void GraphicsPipeline::Create(ShaderList shader_list) {
-    this->mDevice = RendererState.Vulkan.GetDevice();
+    this->mDevice = RendererState->Vulkan.GetDevice();
 
     VkSpecializationInfo specialization_info = {
         .mapEntryCount = 0,
@@ -68,12 +71,20 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
 
     VertexInfo vertex_info = MakeVertexInfo();
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+    // VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    //     .vertexBindingDescriptionCount = 1,
+    //     .pVertexBindingDescriptions = &vertex_info.binding,
+    //     .vertexAttributeDescriptionCount = (uint32)vertex_info.attributes.Size,
+    //     .pVertexAttributeDescriptions = vertex_info.attributes.Data,
+    // };
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &vertex_info.binding,
-        .vertexAttributeDescriptionCount = (uint32)vertex_info.attributes.Size,
-        .pVertexAttributeDescriptions = vertex_info.attributes,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions = nullptr,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions = nullptr,
     };
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
@@ -82,7 +93,7 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    const Vec2i extent = RendererState.Vulkan.Swapchain.Extent;
+    const Vec2i extent = RendererState->Vulkan.Swapchain.Extent;
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -146,16 +157,15 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
 
 
     this->CreateLayout();
+    this->RenderPass.Create(*this->mDevice, RendererState->Vulkan.Swapchain);
 
-    this->RenderPass.Create(*this->mDevice, RendererState.Vulkan.Swapchain);
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {
+    VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 
         .stageCount = (uint32)shader_create_info.Size,
         .pStages = shader_create_info,
 
-        .pVertexInputState = &vertexInputInfo,
+        .pVertexInputState = &vertex_input_info,
         .pInputAssemblyState = &input_assembly_info,
         .pViewportState = &viewport_state_info,
         .pRasterizationState = &rasterizer_info,
@@ -170,36 +180,42 @@ void GraphicsPipeline::Create(ShaderList shader_list) {
         .subpass = 0,
     };
 
-    const VkResult status = vkCreateGraphicsPipelines(this->mDevice->Device, nullptr, 1, &pipelineInfo, nullptr, &this->Pipeline);
+    const VkResult status = vkCreateGraphicsPipelines(this->mDevice->Device, nullptr, 1, &pipeline_info, nullptr, &this->Pipeline);
 
     if (status != VK_SUCCESS) {
         Panic("Could not create graphics pipeline", status);
     }
 }
 
-    void GraphicsPipeline::Bind(VkCommandBuffer command_buffer) {
-        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline);
-    }
+void GraphicsPipeline::Bind(CommandBuffer &command_buffer) {
+    vkCmdBindPipeline(command_buffer.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->Pipeline);
+}
 
 void GraphicsPipeline::Destroy()
 {
+    this->mDevice->WaitForIdle();
+
     if (Pipeline) {
         vkDestroyPipeline(this->mDevice->Device, this->Pipeline, nullptr);
     }
     if (Layout) {
         vkDestroyPipelineLayout(this->mDevice->Device, this->Layout, nullptr);
     }
+
     RenderPass.Destroy(*this->mDevice);
 }
 
 void GraphicsPipeline::CreateLayout() {
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    VkPipelineLayoutCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pushConstantRangeCount = 0,
+    };
 
-    if (vkCreatePipelineLayout(this->mDevice->Device, &pipelineLayoutInfo, nullptr, &this->Layout) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create pipeline layout!");
+    const VkResult status = vkCreatePipelineLayout(this->mDevice->Device, &create_info, nullptr, &this->Layout);
+
+    if (status != VK_SUCCESS) {
+        Panic("Failed to create pipeline layout", status);
     }
 }
 

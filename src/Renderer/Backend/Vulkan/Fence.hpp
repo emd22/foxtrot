@@ -41,6 +41,15 @@ public:
         }
     }
 
+    void Reset()
+    {
+        const VkResult status = vkResetFences(this->mDevice->Device, 1, &this->Fence);
+
+        if (status != VK_SUCCESS) {
+            Panic_("Fence", "Could not reset fence", status);
+        }
+    }
+
     void Destroy()
     {
         vkDestroyFence(this->mDevice->Device, this->Fence, nullptr);

@@ -3,13 +3,18 @@
 
 #include "Renderer/Backend/RenderPanic.hpp"
 
-RendererStateInstance RendererState;
-
 AR_SET_MODULE_NAME("Renderer")
+
+RendererStateInstance *RendererState;
+
+void SetRendererState(RendererStateInstance *instance)
+{
+    RendererState = instance;
+}
 
 void AssertRendererExists()
 {
-    if (!RendererState.Vulkan.Initialized) {
+    if (!RendererState->Vulkan.Initialized) {
         Panic("RendererState not initialized!", 0);
     }
 }

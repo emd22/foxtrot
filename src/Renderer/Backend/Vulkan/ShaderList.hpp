@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Backend/RenderPanic.hpp"
 #include "vulkan/vulkan_core.h"
 #include <Core/Types.hpp>
 #include <Core/StaticArray.hpp>
@@ -29,8 +30,7 @@ public:
     {
         switch (this->mShaderType) {
             case ShaderType::Unknown:
-                Log::Error("Attempting to get shader stage bit of ShaderType::Unknown!", 0);
-
+                Panic_("ShaderList", "Attempting to get shader stage bit of ShaderType::Unknown!", 0);
             case ShaderType::Vertex:
                 return VK_SHADER_STAGE_VERTEX_BIT;
             case ShaderType::Fragment:
@@ -59,7 +59,7 @@ public:
             shader_stages.Insert(ShaderInfo(ShaderType::Fragment, this->Fragment));
         }
 
-        return shader_stages;
+        return std::move(shader_stages);
     }
 
     VkShaderModule Vertex = nullptr;

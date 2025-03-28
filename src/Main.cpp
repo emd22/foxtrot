@@ -1,6 +1,7 @@
 
 
 #include "Core/Defines.hpp"
+#include "Renderer/Backend/Vulkan.hpp"
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/Shader.hpp"
 #include "Renderer/Backend/Vulkan/ShaderList.hpp"
@@ -62,11 +63,16 @@ int main() {
 
     Window window("Test window", 1024, 720);
 
-    RendererState.Vulkan.SelectWindow(window.GetWindow());
-    RendererState.Vulkan.Init(Vec2i(1024, 720));
+
+    RendererStateInstance renderer_state;
+    SetRendererState(&renderer_state);
+
+    auto *ren = &RendererState->Vulkan;
+
+    ren->SelectWindow(window.GetWindow());
+    ren->Init(Vec2i(1024, 720));
 
     vulkan::GraphicsPipeline pipeline;
-
 
     {
         ShaderList shader_list;
@@ -79,15 +85,19 @@ int main() {
 
         pipeline.Create(shader_list);
 
-        RendererState.Vulkan.Swapchain.CreateSwapchainFramebuffers(&pipeline);
+        ren->Swapchain.CreateSwapchainFramebuffers(&pipeline);
     }
 
 
     while (Running) {
         ProcessEvents();
-    }
 
-    RendererState.Destroy();
+        if (ren->BeginFrame(pipeline) != vulkan::FrameResult::Success) {
+            continue;
+        }
+
+        ren->FinishFrame(pipeline);
+    }
 
     return 0;
 }

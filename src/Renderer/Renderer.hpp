@@ -12,9 +12,16 @@ public:
         }
     }
 
+    ~RendererStateInstance()
+    {
+        this->Destroy();
+    }
+
     vulkan::VkRenderBackend Vulkan;
 };
 
+void SetRendererState(RendererStateInstance *instance);
+
 void AssertRendererExists();
 
-extern RendererStateInstance RendererState;
+extern RendererStateInstance *RendererState;

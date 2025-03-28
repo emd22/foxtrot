@@ -16,17 +16,22 @@ namespace vulkan {
 class Swapchain {
 public:
     Swapchain() = default;
-
-    void Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device);
-    void CreateSwapchainFramebuffers(GraphicsPipeline *pipeline);
-
     ~Swapchain();
 
-private:
-    void CreateSwapchain(Vec2i size, VkSurfaceKHR &surface, GPUDevice &device);
-    void CreateSwapchainImages(GPUDevice &device);
+    void Init(Vec2i size, VkSurfaceKHR &surface, GPUDevice *device);
+    void CreateSwapchainFramebuffers(GraphicsPipeline *pipeline);
 
-    void CreateImageViews(GPUDevice &device);
+    VkSwapchainKHR GetSwapchain() { return this->mSwapchain; }
+
+    void Destroy();
+
+private:
+    void CreateSwapchain(Vec2i size, VkSurfaceKHR &surface);
+    void CreateSwapchainImages();
+    void CreateImageViews();
+
+    void DestroyFramebuffersAndImageViews();
+    void DestroyInternalSwapchain();
 
 public:
     StaticArray<VkImageView> ImageViews;
@@ -40,6 +45,7 @@ public:
     bool Initialized = false;
 
 private:
+    GPUDevice *mDevice = nullptr;
     GraphicsPipeline *mPipeline = nullptr;
     VkSwapchainKHR mSwapchain = nullptr;
 };

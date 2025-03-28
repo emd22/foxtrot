@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderBackend.hpp"
+#include "ThirdParty/vk_mem_alloc.h"
 #include "vulkan/vulkan_core.h"
 
 #include "Vulkan/Swapchain.hpp"
@@ -13,6 +14,13 @@ struct SDL_Window;
 
 namespace vulkan {
 
+enum class FrameResult
+{
+    Success,
+    GraphicsOutOfDate,
+    RenderError,
+};
+
 class VkRenderBackend final : RenderBackend {
 public:
     const uint32_t FramesInFlight = 2;
@@ -23,6 +31,9 @@ public:
 
     void Init(Vec2i window_size);
     void Destroy();
+
+    FrameResult BeginFrame(GraphicsPipeline &pipeline);
+    void FinishFrame(GraphicsPipeline &pipeline);
 
     void SelectWindow(SDL_Window *window)
     {
@@ -36,22 +47,22 @@ public:
 
     FrameData *GetFrame();
 
-    uint32 GetFrameNumber()
-    {
-        return this->mFrameNumber;
-    }
-
-    uint32 GetImageIndex()
-    {
-        return this->mImageIndex = 0;
-    }
+    uint32 GetFrameNumber() { return this->mFrameNumber; }
+    uint32 GetImageIndex() { return this->mImageIndex = 0; }
+    VmaAllocator *GetGPUAllocator() { return &this->GPUAllocator; }
 
 private:
     void InitVulkan();
     void CreateSurfaceFromWindow();
+    void InitGPUAllocator();
+
+    void SubmitFrame();
+    void PresentFrame();
 
     void InitFrames();
     void DestroyFrames();
+
+    FrameResult GetNextSwapchainImage(FrameData *frame);
 
     ExtensionList QueryInstanceExtensions(bool invalidate_previous = false);
     ExtensionNames MakeInstanceExtensionList(ExtensionNames user_requested_extensions);
@@ -65,6 +76,7 @@ public:
 
     bool Initialized = false;
 
+    VmaAllocator GPUAllocator = nullptr;
 private:
 
     VkInstance mInstance = nullptr;
@@ -72,6 +84,7 @@ private:
 
     SDL_Window *mWindow = nullptr;
     vulkan::GPUDevice mDevice;
+
 
     VkDebugUtilsMessengerEXT mDebugMessenger;
 

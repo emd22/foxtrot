@@ -19,7 +19,7 @@ void CommandBuffer::Create(CommandPool *pool)
         .commandBufferCount = 1,
     };
 
-    this->mDevice = RendererState.Vulkan.GetDevice();
+    this->mDevice = RendererState->Vulkan.GetDevice();
 
     const VkResult status = vkAllocateCommandBuffers(this->mDevice->Device, &buffer_info, &this->CommandBuffer);
     if (status != VK_SUCCESS) {

@@ -11,7 +11,7 @@ namespace vulkan {
 class Framebuffer
 {
 public:
-    void Create(StaticArray<VkImageView> image_views, GraphicsPipeline pipeline, Vec2i size);
+    void Create(StaticArray<VkImageView> &image_views, GraphicsPipeline &pipeline, Vec2i size);
     void Destroy();
 
 public:

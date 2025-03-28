@@ -196,6 +196,11 @@ void GPUDevice::Create(VkInstance instance, VkSurfaceKHR surface)
     this->CreateLogicalDevice();
 }
 
+void GPUDevice::Destroy()
+{
+    vkDestroyDevice(this->Device, nullptr);
+}
+
 VkSurfaceFormatKHR GPUDevice::GetBestSurfaceFormat()
 {
     uint32 format_count;
@@ -241,6 +246,11 @@ void GPUDevice::PickPhysicalDevice()
     if (this->Physical == nullptr) {
         Panic("Could not find a suitable physical device!", 0);
     }
+}
+
+void GPUDevice::WaitForIdle()
+{
+    vkDeviceWaitIdle(this->Device);
 }
 
 }; // namespace vulkan

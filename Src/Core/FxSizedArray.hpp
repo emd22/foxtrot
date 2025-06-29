@@ -13,6 +13,8 @@
 // #define FX_STATIC_ARRAY_DEBUG 1
 // #define FX_STATIC_ARRAY_NO_MEMPOOL 1
 
+#include <assert.h>
+
 static inline void NoMemError()
 {
     puts("FxSizedArray: out of memory");
@@ -233,6 +235,8 @@ public:
 
     void Insert(const ElementType& object)
     {
+        assert(Data != nullptr);
+
         if (Size > Capacity) {
             printf("New Size(%zu) > Capacity(%zu)!\n", Size, Capacity);
             throw std::out_of_range("FxSizedArray insert is larger than the capacity!");
@@ -250,6 +254,8 @@ public:
     /** Inserts a new empty element into the array and returns a pointer to the element */
     ElementType* Insert()
     {
+        assert(Data != nullptr);
+
         if (Size > Capacity) {
             printf("New Size(%zu) > Capacity(%zu)!\n", Size, Capacity);
             throw std::out_of_range("FxSizedArray insert is larger than the capacity!");

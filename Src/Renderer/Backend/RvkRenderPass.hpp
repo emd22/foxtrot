@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Core/FxSizedArray.hpp>
+
 class RvkSwapchain;
 class RvkGpuDevice;
 class RvkCommandBuffer;
@@ -17,6 +19,9 @@ public:
     void Destroy(RvkGpuDevice &device);
 
 public:
-    VkRenderPass RenderPass = nullptr;
+    // FxSizedArray<VkRenderingInfo> RenderInfos;
+    // FxSizedArray<VkRenderingAttachmentInfo> AttachmentInfos;
+
+    // VkRenderPass RenderPass = nullptr;
     RvkCommandBuffer *CommandBuffer = nullptr;
 };

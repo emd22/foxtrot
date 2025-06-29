@@ -10,6 +10,7 @@
 #include "Backend/RvkPipeline.hpp"
 #include "Backend/RvkCommands.hpp"
 #include "Backend/Util.hpp"
+#include "vulkan/vulkan_core.h"
 
 #include <chrono>
 #include <iostream>
@@ -140,7 +141,7 @@ void FxRenderBackend::InitVulkan()
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = app_name;
     app_info.pEngineName = app_name;
-    app_info.apiVersion = VK_MAKE_VERSION(1, 3, 261);
+    app_info.apiVersion = VK_MAKE_VERSION(1, 4, 313);
 
     ExtensionNames requested_extensions = {
         VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
@@ -244,6 +245,8 @@ FuncProt GetExtensionFuncVk(VkInstance instance, const char *name)
     Log::Error("Could not load extension function '%s'", name);
     return nullptr;
 }
+
+
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance,
@@ -465,6 +468,71 @@ FrameResult FxRenderBackend::BeginFrame(RvkGraphicsPipeline &pipeline)
     frame->CommandBuffer.Reset();
     frame->CommandBuffer.Record();
 
+    const VkImageMemoryBarrier image_memory_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .image = Swapchain.Images[GetFrameNumber()],
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
+    };
+
+
+    const VkImageMemoryBarrier color_image_barriers[] = {
+        image_memory_barrier,
+    };
+
+    vkCmdPipelineBarrier(
+        frame->CommandBuffer.CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // srcStageMask
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // dstStageMask
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        sizeof(color_image_barriers) / sizeof(color_image_barriers[0]),
+        color_image_barriers
+    );
+
+
+    const VkImageMemoryBarrier depth_memory_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .image = Swapchain.DepthImages[GetFrameNumber()].Image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
+    };
+
+    vkCmdPipelineBarrier(
+        frame->CommandBuffer.CommandBuffer,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &depth_memory_barrier
+    );
+
+
     pipeline.RenderPass.Begin();
     pipeline.Bind(frame->CommandBuffer);
 
@@ -564,7 +632,38 @@ void FxRenderBackend::FinishFrame(RvkGraphicsPipeline &pipeline)
 {
     pipeline.RenderPass.End();
 
-    GetFrame()->CommandBuffer.End();
+    const VkImageMemoryBarrier image_memory_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = 0,
+        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .image = Swapchain.Images[GetFrameNumber()],
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
+    };
+
+    RvkFrameData* frame = GetFrame();
+
+    vkCmdPipelineBarrier(
+        frame->CommandBuffer.CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &image_memory_barrier
+    );
+
+    frame->CommandBuffer.End();
 
     SubmitFrame();
     PresentFrame();

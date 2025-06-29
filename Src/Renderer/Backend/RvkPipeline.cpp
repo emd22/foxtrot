@@ -2,6 +2,7 @@
 #include "RvkPipeline.hpp"
 #include "Core/Defines.hpp"
 #include "RvkCommands.hpp"
+#include "vulkan/vulkan_core.h"
 
 #include <Core/Log.hpp>
 #include <Core/FxPanic.hpp>
@@ -156,6 +157,15 @@ void RvkGraphicsPipeline::Create(ShaderList shader_list) {
     };
 
 
+    const VkPipelineRenderingCreateInfo pr_create_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+        .colorAttachmentCount = 1, // TODO: Change for deferred renderer!
+        .pColorAttachmentFormats = &Renderer->Swapchain.SurfaceFormat.format,
+        .depthAttachmentFormat = VK_FORMAT_D16_UNORM,
+        .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
+    };
+
+
     CreateLayout();
     RenderPass.Create(*mDevice, Renderer->Swapchain);
 
@@ -177,8 +187,12 @@ void RvkGraphicsPipeline::Create(ShaderList shader_list) {
 
         .layout = Layout,
 
-        .renderPass = RenderPass.RenderPass,
+        .renderPass = nullptr,
+
+        // .renderPass = RenderPass.RenderPass,
         .subpass = 0,
+
+        .pNext = &pr_create_info,
     };
 
     const VkResult status = vkCreateGraphicsPipelines(mDevice->Device, nullptr, 1, &pipeline_info, nullptr, &Pipeline);

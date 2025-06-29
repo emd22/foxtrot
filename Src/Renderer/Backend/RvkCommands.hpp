@@ -56,6 +56,7 @@ public:
     void End();
 
     operator VkCommandBuffer() const { return CommandBuffer; }
+    operator VkCommandBuffer&() { return CommandBuffer; }
 
     bool IsInitialized() const
     {

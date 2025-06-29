@@ -126,7 +126,6 @@ int main()
     RvkGraphicsPipeline pipeline;
 
     CreateSolidPipeline(pipeline);
-    Renderer->Swapchain.CreateSwapchainFramebuffers(&pipeline);
 
     Renderer->DescriptorPool.AddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, RendererFramesInFlight);
     Renderer->DescriptorPool.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, RendererFramesInFlight);

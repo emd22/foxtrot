@@ -2,21 +2,18 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Core/FxSizedArray.hpp>
+
 class RvkSwapchain;
 class RvkGpuDevice;
 class RvkCommandBuffer;
 
-class RvkRenderPass
+class RvkDynamicRendering
 {
 public:
-    void Create(RvkGpuDevice &device, RvkSwapchain &swapchain);
-
     void Begin();
     void End();
 
-    void Destroy(RvkGpuDevice &device);
-
 public:
-    VkRenderPass RenderPass = nullptr;
     RvkCommandBuffer *CommandBuffer = nullptr;
 };

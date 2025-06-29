@@ -10,6 +10,7 @@
 #include "Backend/RvkPipeline.hpp"
 #include "Backend/RvkCommands.hpp"
 #include "Backend/Util.hpp"
+#include "vulkan/vulkan_core.h"
 
 #include <chrono>
 #include <iostream>
@@ -140,7 +141,7 @@ void FxRenderBackend::InitVulkan()
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = app_name;
     app_info.pEngineName = app_name;
-    app_info.apiVersion = VK_MAKE_VERSION(1, 3, 261);
+    app_info.apiVersion = VK_MAKE_VERSION(1, 4, 313);
 
     ExtensionNames requested_extensions = {
         VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
@@ -244,6 +245,8 @@ FuncProt GetExtensionFuncVk(VkInstance instance, const char *name)
     Log::Error("Could not load extension function '%s'", name);
     return nullptr;
 }
+
+
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance,
@@ -446,6 +449,48 @@ void FxRenderBackend::SubmitOneTimeCmd(FxRenderBackend::SubmitFunc submit_func)
 }
 
 
+// TODO: integrate with RvkImage, transition separate swapchain image and image views to using RvkImage.
+static inline void TransitionImage(
+    const RvkCommandBuffer& cmd,
+    VkImage image,
+    VkAccessFlags src_access_mask,
+    VkAccessFlags dst_access_mask,
+    VkImageLayout old_layout,
+    VkImageLayout new_layout,
+    VkImageAspectFlags aspect_mask,
+    VkPipelineStageFlags src_stage_mask,
+    VkPipelineStageFlags dst_stage_mask
+)
+{
+    const VkImageMemoryBarrier image_barrier {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = src_access_mask,
+        .dstAccessMask = dst_access_mask,
+        .oldLayout = old_layout,
+        .newLayout = new_layout,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = aspect_mask,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
+    };
+
+    vkCmdPipelineBarrier(
+        cmd.CommandBuffer,
+        src_stage_mask,
+        dst_stage_mask,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        1,
+        &image_barrier
+    );
+}
 
 FrameResult FxRenderBackend::BeginFrame(RvkGraphicsPipeline &pipeline)
 {
@@ -465,7 +510,42 @@ FrameResult FxRenderBackend::BeginFrame(RvkGraphicsPipeline &pipeline)
     frame->CommandBuffer.Reset();
     frame->CommandBuffer.Record();
 
-    pipeline.RenderPass.Begin();
+    // Transition swapchain image
+    TransitionImage(
+        frame->CommandBuffer,
+
+        Swapchain.Images[GetFrameNumber()], // image
+
+        VK_ACCESS_NONE,                           // srcAccessMask
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // dstAccessMask
+        VK_IMAGE_LAYOUT_UNDEFINED,                // oldLayout
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // newLayout
+        VK_IMAGE_ASPECT_COLOR_BIT,                // aspectMask
+
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // srcStageMask
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT  // dstStageMask
+    );
+
+    const auto depth_stage_mask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+    // Transition depth image
+    TransitionImage(
+        frame->CommandBuffer,
+
+        Swapchain.DepthImages[GetFrameNumber()].Image,    // image
+
+        VK_ACCESS_NONE,                                   // srcAccessMask
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,     // dstAccessMask
+        VK_IMAGE_LAYOUT_UNDEFINED,                        // oldLayout
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // newLayout
+        VK_IMAGE_ASPECT_DEPTH_BIT,                        // aspectMask
+
+        depth_stage_mask, // srcStageMask
+        depth_stage_mask  // dstStageMask
+    );
+
+
+    pipeline.DynamicRendering.Begin();
     pipeline.Bind(frame->CommandBuffer);
 
     const int32 width = Swapchain.Extent.Width();
@@ -560,11 +640,34 @@ void FxRenderBackend::PresentFrame()
     }
 }
 
+
+
 void FxRenderBackend::FinishFrame(RvkGraphicsPipeline &pipeline)
 {
-    pipeline.RenderPass.End();
+    pipeline.DynamicRendering.End();
 
-    GetFrame()->CommandBuffer.End();
+    RvkFrameData* frame = GetFrame();
+
+    // Transition image layout to present, mark that we are the end
+    // of the pipeline.
+    TransitionImage(
+        frame->CommandBuffer,
+
+        Swapchain.Images[GetFrameNumber()],    // image
+
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // srcAccessMask
+        VK_ACCESS_NONE,                       // dstAccessMask
+
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, // oldLayout
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // newLayout
+
+        VK_IMAGE_ASPECT_COLOR_BIT, // aspectMask
+
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // srcStageMask
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT           // dstStageMask
+    );
+
+    frame->CommandBuffer.End();
 
     SubmitFrame();
     PresentFrame();

@@ -2,7 +2,6 @@
 
 #include "RvkPipeline.hpp"
 #include "RvkImage.hpp"
-#include "RvkFramebuffer.hpp"
 
 #include <Core/FxSizedArray.hpp>
 #include <Math/Vector.hpp>
@@ -17,18 +16,17 @@ public:
     ~RvkSwapchain();
 
     void Init(Vec2u size, VkSurfaceKHR &surface, RvkGpuDevice *device);
-    void CreateSwapchainFramebuffers(RvkGraphicsPipeline *pipeline);
+    void Destroy();
 
     VkSwapchainKHR GetSwapchain() { return mSwapchain; }
-
-    void Destroy();
 
 private:
     void CreateSwapchain(Vec2u size, VkSurfaceKHR &surface);
     void CreateSwapchainImages();
-    void CreateImageViews();
 
-    void DestroyFramebuffersAndImageViews();
+    void CreateImageViews();
+    void DestroyImageViews();
+
     void DestroyInternalSwapchain();
 
 public:
@@ -36,8 +34,6 @@ public:
     FxSizedArray<VkImage> Images;
 
     FxSizedArray<RvkImage> DepthImages;
-
-    FxSizedArray<RvkFramebuffer> Framebuffers;
 
     Vec2u Extent = Vec2u::Zero;
 
@@ -47,6 +43,5 @@ public:
 
 private:
     RvkGpuDevice *mDevice = nullptr;
-    RvkGraphicsPipeline *mPipeline = nullptr;
     VkSwapchainKHR mSwapchain = nullptr;
 };

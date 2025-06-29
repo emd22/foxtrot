@@ -2,10 +2,11 @@
 #include "Core/Defines.hpp"
 #include "Core/FxSizedArray.hpp"
 
-#include "vulkan/vulkan_core.h"
 #include <Core/Log.hpp>
 
 #include <Core/FxPanic.hpp>
+
+#include <vulkan/vulkan.h>
 
 FX_SET_MODULE_NAME("Device")
 
@@ -66,44 +67,6 @@ void RvkQueueFamilies::FindQueueFamilies(VkPhysicalDevice physical_device, VkSur
 
     FindGraphicsFamily(physical_device, surface);
     FindTransferFamily(physical_device, surface);
-    // uint32 index = 0;
-    // for (const auto &family : RawFamilies) {
-    //     if (mPresentIndex != QueueNull && mGraphicsIndex != QueueNull && mTransferIndex != QueueNull) {
-    //         break;
-    //     }
-
-    //     if (family.queueCount == 0)
-    //         continue;
-
-    //     // check for a graphics family
-    //     {
-    //         if ((family.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-    //             mGraphicsIndex = index;
-    //         }
-    //     }
-
-    //     // check for a present family
-    //     {
-    //         uint32 present_support = 0;
-
-    //         VkResult status = vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, index, surface, &present_support);
-    //         if (status != VK_SUCCESS) {
-    //             Log::Error("Could not retrieve physical device surface support", status);
-    //             continue;
-    //         }
-
-    //         Log::Info("Present support: %d\n", present_support);
-    //         if (present_support > 0) {
-    //             mPresentIndex = index;
-    //         }
-    //     }
-
-    //     if (mPresentIndex != QueueNull && mGraphicsIndex != QueueNull && mTransferIndex == QueueNull && (family.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
-    //         mTransferIndex = index;
-    //     }
-
-    //     index++;
-    // }
 }
 
 
@@ -124,11 +87,21 @@ bool RvkGpuDevice::IsPhysicalDeviceSuitable(VkPhysicalDevice &physical)
 
     const uint32 version = properties.apiVersion;
 
-    if (version > VK_MAKE_VERSION(1, 2, 0) && new_families.IsComplete()) {
+    if (version >= VK_MAKE_VERSION(1, 3, 0) && new_families.IsComplete()) {
+        Log::Info("Device suitable: (Supports Vk: %d.%d.%d), Graphics?: %s, Present?: %s, Xfer?: %s, IsComplete?: %s",
+            VK_VERSION_MAJOR(version),
+            VK_VERSION_MINOR(version),
+            VK_VERSION_PATCH(version),
+            Log::YesNo(new_families.GetGraphicsFamily() != RvkQueueFamilies::QueueNull),
+            Log::YesNo(new_families.GetPresentFamily() != RvkQueueFamilies::QueueNull),
+            Log::YesNo(new_families.GetTransferFamily() != RvkQueueFamilies::QueueNull),
+            Log::YesNo(new_families.IsComplete())
+        );
         return true;
     }
 
-    Log::Info("Device not suitable: (Vk: %d.%d.%d), Graphics?: %s, Present?: %s, Xfer?: %s, IsComplete?: %s",
+
+    Log::Info("Device not suitable: (Supports Vk: %d.%d.%d), Graphics?: %s, Present?: %s, Xfer?: %s, IsComplete?: %s",
         VK_VERSION_MAJOR(version),
         VK_VERSION_MINOR(version),
         VK_VERSION_PATCH(version),
@@ -164,35 +137,6 @@ void RvkGpuDevice::CreateLogicalDevice()
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
     queue_create_infos.reserve(queue_family_indices.size());
 
-    // float queue_priorities[] = { 1.0f };
-
-    // int index = 0;
-
-    // for (const auto family_index : queue_family_indices) {
-    //     if (family_index == QueueFamilies::QueueNull) {
-    //         continue;
-    //     }
-
-    //     queue_create_infos.push_back(VkDeviceQueueCreateInfo{
-    //         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-    //         .queueFamilyIndex = family_index,
-    //         .queueCount = 1,
-    //         .pQueuePriorities = queue_priorities
-    //     });
-
-    //     // check if our queue family index's are the same
-    //     {
-    //         const uint32 next_index = index + 1;
-    //         // if the next queue family (presentation) is the same as the current one, return as we
-    //         // do not need to create a new queue family
-    //         if (next_index < queue_family_indices.size() && family_index == queue_family_indices[next_index]) {
-    //             break;
-    //         }
-    //     }
-
-    //     index++;
-    // }
-
     const float graphics_priorities[] = { 1.0f };
     float transfer_priorities[] = { 1.0f };
 
@@ -211,11 +155,20 @@ void RvkGpuDevice::CreateLogicalDevice()
     });
 
     const VkPhysicalDeviceFeatures device_features{};
+
     const char *device_extensions[] = {
     #ifdef FX_PLATFORM_MACOS
         "VK_KHR_portability_subset",
     #endif
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+
+    // lol Dr. Features
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dr_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+        .dynamicRendering = true,
+        .pNext = nullptr
     };
 
     const VkDeviceCreateInfo create_info{
@@ -231,6 +184,8 @@ void RvkGpuDevice::CreateLogicalDevice()
         // device specific layers (not used in modern vulkan)
         .enabledLayerCount = 0,
         .ppEnabledLayerNames = nullptr,
+
+        .pNext = &dr_features
     };
 
     const VkResult status = vkCreateDevice(Physical, &create_info, nullptr, &Device);

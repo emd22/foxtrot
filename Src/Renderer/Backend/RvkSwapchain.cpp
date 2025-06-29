@@ -1,6 +1,6 @@
 #include "RvkSwapchain.hpp"
 #include "RvkDevice.hpp"
-#include "RvkPipeline.hpp"
+// #include "RvkPipeline.hpp"
 #include "../Renderer.hpp"
 
 #include <Core/Defines.hpp>
@@ -140,41 +140,19 @@ void RvkSwapchain::CreateSwapchain(Vec2u size, VkSurfaceKHR &surface)
     }
 }
 
-void RvkSwapchain::CreateSwapchainFramebuffers(RvkGraphicsPipeline *pipeline)
-{
-    Log::Debug("Image view count: %d", ImageViews.Size);
-    Framebuffers.Free();
-    Framebuffers.InitSize(ImageViews.Size);
-
-    FxSizedArray<VkImageView> temp_views;
-    temp_views.InitSize(2);
-
-    for (int i = 0; i < ImageViews.Size; i++) {
-        temp_views[0] = ImageViews[i];
-        temp_views[1] = DepthImages[i].View;
-
-        Framebuffers[i].Create(temp_views, *pipeline, Extent);
-    }
-
-    Log::Debug("Create framebuffers", 0);
-
-    mPipeline = pipeline;
-}
-
-void RvkSwapchain::DestroyFramebuffersAndImageViews()
+void RvkSwapchain::DestroyImageViews()
 {
     // Destroy and free depth images
     for (RvkImage &depth_image : DepthImages) {
         depth_image.Destroy();
     }
+
     DepthImages.Free();
 
     for (int i = 0; i < ImageViews.Size; i++) {
-        Framebuffers[i].Destroy();
         vkDestroyImageView(mDevice->Device, ImageViews[i], nullptr);
     }
 
-    Framebuffers.Free();
     ImageViews.Free();
 }
 
@@ -185,7 +163,7 @@ void RvkSwapchain::DestroyInternalSwapchain()
 
 void RvkSwapchain::Destroy()
 {
-    DestroyFramebuffersAndImageViews();
+    DestroyImageViews();
     Images.Free();
     DestroyInternalSwapchain();
 

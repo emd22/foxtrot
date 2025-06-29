@@ -70,6 +70,13 @@ public:
         return result;
     }
 
+    operator VkExtent2D () const
+    {
+        static_assert(std::is_same_v<Type, uint32>);
+
+        return VkExtent2D{X, Y};
+    }
+
     Vec2Base<Type> &operator = (const Vec2Base<Type> &other)
     {
         X = other.X;

@@ -514,7 +514,7 @@ FrameResult FxRenderBackend::BeginFrame(RvkGraphicsPipeline &pipeline)
     TransitionImage(
         frame->CommandBuffer,
 
-        Swapchain.Images[GetFrameNumber()], // image
+        Swapchain.Images[GetFrameNumber()].Image, // image
 
         VK_ACCESS_NONE,                           // srcAccessMask
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,     // dstAccessMask
@@ -653,7 +653,7 @@ void FxRenderBackend::FinishFrame(RvkGraphicsPipeline &pipeline)
     TransitionImage(
         frame->CommandBuffer,
 
-        Swapchain.Images[GetFrameNumber()],    // image
+        Swapchain.Images[GetFrameNumber()].Image,    // image
 
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, // srcAccessMask
         VK_ACCESS_NONE,                       // dstAccessMask

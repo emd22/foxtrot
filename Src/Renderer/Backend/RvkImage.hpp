@@ -32,6 +32,9 @@ public:
         Destroy();
     }
 
+private:
+    RvkGpuDevice* GetDevice();
+
 public:
     Vec2u Size = Vec2u::Zero;
 

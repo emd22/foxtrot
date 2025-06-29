@@ -19,7 +19,7 @@ void RvkDynamicRendering::Begin() {
 
     const VkRenderingAttachmentInfo color_attachment_info {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = swapchain.ImageViews[frame_index],
+        .imageView = swapchain.Images[frame_index].View,
         .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,

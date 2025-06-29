@@ -29,8 +29,23 @@ void RvkSwapchain::CreateSwapchainImages()
 
     vkGetSwapchainImagesKHR(mDevice->Device, mSwapchain, &image_count, nullptr);
 
-    Images.InitSize(image_count);
-    vkGetSwapchainImagesKHR(mDevice->Device, mSwapchain, &image_count, Images.Data);
+    // Get the VkImages from the swapchain
+    FxSizedArray<VkImage> raw_images;
+    raw_images.InitSize(image_count);
+
+    vkGetSwapchainImagesKHR(mDevice->Device, mSwapchain, &image_count, raw_images.Data);
+
+
+    Images.InitCapacity(raw_images.Size);
+
+    for (auto& image : raw_images) {
+        // Insert the VkImages into our images array as RvkImages
+        RvkImage* rvk_image = Images.Insert();
+        rvk_image->Image = image;
+        rvk_image->ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        rvk_image->View = nullptr;
+        rvk_image->Allocation = nullptr;
+    }
 
     DepthImages.InitSize(image_count);
 }
@@ -39,12 +54,10 @@ void RvkSwapchain::CreateImageViews()
 {
     const uint64 images_size = Images.Size;
 
-    ImageViews.InitSize(images_size);
-
     for (int32 i = 0; i < images_size; i++) {
         const VkImageViewCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = Images[i],
+            .image = Images[i].Image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = SurfaceFormat.format,
             .components = {
@@ -62,7 +75,8 @@ void RvkSwapchain::CreateImageViews()
             }
         };
 
-        VkResult status = vkCreateImageView(mDevice->Device, &create_info, nullptr, &ImageViews[i]);
+        // Create image view for each swapchain image
+        VkResult status = vkCreateImageView(mDevice->Device, &create_info, nullptr, &Images[i].View);
         if (status != VK_SUCCESS) {
             FxModulePanic("Could not create swapchain image view", status);
         }
@@ -146,14 +160,12 @@ void RvkSwapchain::DestroyImageViews()
     for (RvkImage &depth_image : DepthImages) {
         depth_image.Destroy();
     }
-
     DepthImages.Free();
 
-    for (int i = 0; i < ImageViews.Size; i++) {
-        vkDestroyImageView(mDevice->Device, ImageViews[i], nullptr);
+    for (RvkImage& image : Images) {
+        image.Destroy();
     }
-
-    ImageViews.Free();
+    Images.Free();
 }
 
 void RvkSwapchain::DestroyInternalSwapchain()
@@ -163,8 +175,11 @@ void RvkSwapchain::DestroyInternalSwapchain()
 
 void RvkSwapchain::Destroy()
 {
+    if (!Initialized) {
+        return;
+    }
+
     DestroyImageViews();
-    Images.Free();
     DestroyInternalSwapchain();
 
     Initialized = false;
@@ -172,5 +187,6 @@ void RvkSwapchain::Destroy()
 
 RvkSwapchain::~RvkSwapchain()
 {
-    Images.Free();
+    Destroy();
+    // Images.Free();
 }

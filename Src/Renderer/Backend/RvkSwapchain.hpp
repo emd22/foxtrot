@@ -30,8 +30,8 @@ private:
     void DestroyInternalSwapchain();
 
 public:
-    FxSizedArray<VkImageView> ImageViews;
-    FxSizedArray<VkImage> Images;
+
+    FxSizedArray<RvkImage> Images;
 
     FxSizedArray<RvkImage> DepthImages;
 

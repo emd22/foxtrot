@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ShaderList.hpp"
-#include "RvkRenderPass.hpp"
+#include "RvkDynamicRendering.hpp"
 
 #include <Core/FxSizedArray.hpp>
 
@@ -78,7 +78,9 @@ public:
     VkPipelineLayout Layout = nullptr;
     VkPipeline Pipeline = nullptr;
 
-    RvkRenderPass RenderPass;
+    // TODO: Move or include functions directly in here?
+    RvkDynamicRendering DynamicRendering;
+
 private:
     RvkGpuDevice *mDevice = nullptr;
     ShaderList mShaders;

@@ -167,7 +167,6 @@ void RvkGraphicsPipeline::Create(ShaderList shader_list) {
 
 
     CreateLayout();
-    RenderPass.Create(*mDevice, Renderer->Swapchain);
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -223,8 +222,6 @@ void RvkGraphicsPipeline::Destroy()
     if (MaterialDescriptorSetLayout) {
         vkDestroyDescriptorSetLayout(mDevice->Device, MaterialDescriptorSetLayout, nullptr);
     }
-
-    RenderPass.Destroy(*mDevice);
 }
 
 void RvkGraphicsPipeline::CreateLayout() {

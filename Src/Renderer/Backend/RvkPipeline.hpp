@@ -2,6 +2,7 @@
 
 #include "ShaderList.hpp"
 #include "RvkRenderPass.hpp"
+#include "RvkSampler.hpp"
 
 #include <Core/FxSizedArray.hpp>
 
@@ -72,13 +73,17 @@ private:
     void CreateLayout();
 
 public:
-    VkDescriptorSetLayout MainDescriptorSetLayout = nullptr;
+    VkDescriptorSetLayout DeferredDescriptorSetLayout = nullptr;
     VkDescriptorSetLayout MaterialDescriptorSetLayout = nullptr;
+
     // VkDescriptorSetLayout DescriptorSetLayout = nullptr;
     VkPipelineLayout Layout = nullptr;
     VkPipeline Pipeline = nullptr;
 
     RvkRenderPass RenderPass;
+
+    RvkSampler ColorSampler;
+
 private:
     RvkGpuDevice *mDevice = nullptr;
     ShaderList mShaders;

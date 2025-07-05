@@ -37,24 +37,24 @@ void RvkDescriptorSet::Create(const RvkDescriptorPool& pool, VkDescriptorSetLayo
     }
 }
 
-VkWriteDescriptorSet RvkDescriptorSet::GetImageWriteDescriptor(uint32 bind_dest, const RvkTexture& texture, VkImageLayout layout, VkDescriptorType type)
-{
+// VkWriteDescriptorSet RvkDescriptorSet::GetImageWriteDescriptor(uint32 bind_dest, const RvkTexture& texture, const RvkSampler& sampler, VkImageLayout layout, VkDescriptorType type)
+// {
 
-    VkDescriptorImageInfo image_info{
-        .imageLayout = layout,
-        .imageView = texture.Image.View,
-        .sampler = texture.Sampler
-    };
+//     VkDescriptorImageInfo image_info{
+//         .imageLayout = layout,
+//         .imageView = texture.Image.View,
+//         .sampler = sampler.Sampler
+//     };
 
-    VkWriteDescriptorSet write{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .descriptorType = type,
-        .descriptorCount = 1,
-        .dstSet = Set,
-        .dstBinding = bind_dest,
-        .dstArrayElement = 0,
-        .pImageInfo = &image_info,
-    };
+//     VkWriteDescriptorSet write{
+//         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+//         .descriptorType = type,
+//         .descriptorCount = 1,
+//         .dstSet = Set,
+//         .dstBinding = bind_dest,
+//         .dstArrayElement = 0,
+//         .pImageInfo = &image_info,
+//     };
 
-    return write;
-}
+//     return write;
+// }

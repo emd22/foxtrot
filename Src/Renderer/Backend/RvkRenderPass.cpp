@@ -13,43 +13,67 @@
 
 FX_SET_MODULE_NAME("RvkRenderPass")
 
-void RvkRenderPass::Create(RvkGpuDevice &device, RvkSwapchain &swapchain) {
-    VkAttachmentDescription color_attachment {
-        .format = swapchain.SurfaceFormat.format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    };
+void RvkRenderPass::Create(
+    const RvkGpuDevice& device,
+    const RvkSwapchain& swapchain,
+    FxSizedArray<VkAttachmentDescription>& color_attachments,
+    VkAttachmentDescription depth_attachment
+)
+{
+    // VkAttachmentDescription color_attachment {
+    //     .format = swapchain.SurfaceFormat.format,
+    //     .samples = VK_SAMPLE_COUNT_1_BIT,
+    //     .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    //     .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    //     .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    //     .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    //     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    // };
 
-    VkAttachmentDescription depth_attachment {
-        .format = VK_FORMAT_D16_UNORM,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
+    // VkAttachmentDescription depth_attachment {
+    //     .format = VK_FORMAT_D16_UNORM,
+    //     .samples = VK_SAMPLE_COUNT_1_BIT,
+    //     .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    //     .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    //     .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    //     .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    //     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    // };
 
-    VkAttachmentReference color_attachment_ref {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
+    FxSizedArray<VkAttachmentReference> color_attachment_refs(color_attachments.Size);
 
+    // Create color attachments ref
+    uint32 i = 0;
+    for (i = 0; i < color_attachments.Size; i++) {
+        // VkAttachmentDescription& attachment = color_attachments[i];
+
+        VkAttachmentReference* ref = color_attachment_refs.Insert();
+        ref->attachment = i;
+        ref->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+
+    // Create depth attachment ref
     VkAttachmentReference depth_attachment_ref {
-        .attachment = 1,
+        .attachment = i,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
 
+    // VkAttachmentReference color_attachment_ref {
+    //     .attachment = 0,
+    //     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    // };
+
+    // VkAttachmentReference depth_attachment_ref {
+    //     .attachment = 1,
+    //     .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    // };
+
     VkSubpassDescription subpass {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref,
+        .colorAttachmentCount = static_cast<uint32>(color_attachments.Size),
+        .pColorAttachments = color_attachment_refs.Data,
         .pDepthStencilAttachment = &depth_attachment_ref,
         .pResolveAttachments = nullptr,
     };
@@ -66,15 +90,17 @@ void RvkRenderPass::Create(RvkGpuDevice &device, RvkSwapchain &swapchain) {
                 | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
     };
 
-    FxSizedArray attachments = {
-        color_attachment,
-        depth_attachment
-    };
+    FxSizedArray<VkAttachmentDescription> all_attachments(color_attachments.Size + 1);
+    for (VkAttachmentDescription& attachment : color_attachments) {
+        all_attachments.Insert(attachment);
+    }
+    all_attachments.Insert(depth_attachment);
+
 
     VkRenderPassCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = static_cast<uint32>(attachments.Size),
-        .pAttachments = attachments,
+        .attachmentCount = static_cast<uint32>(all_attachments.Size),
+        .pAttachments = all_attachments.Data,
         .subpassCount = 1,
         .pSubpasses = &subpass,
         .dependencyCount = 1,

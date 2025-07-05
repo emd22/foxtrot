@@ -10,7 +10,8 @@
 
 FX_SET_MODULE_NAME("Pipeline")
 
-VertexInfo RvkGraphicsPipeline::MakeVertexInfo() {
+VertexInfo RvkGraphicsPipeline::MakeVertexInfo()
+{
     using VertexType = RvkVertex<FxVertexPosition | FxVertexNormal | FxVertexUV>;
 
     VkVertexInputBindingDescription binding_desc = {
@@ -30,7 +31,8 @@ VertexInfo RvkGraphicsPipeline::MakeVertexInfo() {
     return { binding_desc, std::move(attribs) };
 }
 
-void RvkGraphicsPipeline::Create(ShaderList shader_list) {
+void RvkGraphicsPipeline::Create(ShaderList shader_list)
+{
     mDevice = Renderer->GetDevice();
 
     VkSpecializationInfo specialization_info = {
@@ -157,7 +159,32 @@ void RvkGraphicsPipeline::Create(ShaderList shader_list) {
 
 
     CreateLayout();
-    RenderPass.Create(*mDevice, Renderer->Swapchain);
+
+    FxSizedArray<VkAttachmentDescription> color_attachments = {
+        VkAttachmentDescription {
+            .format = Renderer->Swapchain.SurfaceFormat.format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        }
+    };
+
+    VkAttachmentDescription depth_attachment {
+        .format = VK_FORMAT_D16_UNORM,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
+    RenderPass.Create(*mDevice, Renderer->Swapchain, color_attachments, depth_attachment);
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -186,6 +213,8 @@ void RvkGraphicsPipeline::Create(ShaderList shader_list) {
     if (status != VK_SUCCESS) {
         FxModulePanic("Could not create graphics pipeline", status);
     }
+
+    ColorSampler.Create();
 }
 
 void RvkGraphicsPipeline::Bind(RvkCommandBuffer &command_buffer) {
@@ -195,6 +224,7 @@ void RvkGraphicsPipeline::Bind(RvkCommandBuffer &command_buffer) {
 void RvkGraphicsPipeline::Destroy()
 {
     mDevice->WaitForIdle();
+    ColorSampler.Destroy();
 
     if (Pipeline) {
         vkDestroyPipeline(mDevice->Device, Pipeline, nullptr);
@@ -203,8 +233,8 @@ void RvkGraphicsPipeline::Destroy()
         vkDestroyPipelineLayout(mDevice->Device, Layout, nullptr);
     }
 
-    if (MainDescriptorSetLayout) {
-        vkDestroyDescriptorSetLayout(mDevice->Device, MainDescriptorSetLayout, nullptr);
+    if (DeferredDescriptorSetLayout) {
+        vkDestroyDescriptorSetLayout(mDevice->Device, DeferredDescriptorSetLayout, nullptr);
     }
     if (MaterialDescriptorSetLayout) {
         vkDestroyDescriptorSetLayout(mDevice->Device, MaterialDescriptorSetLayout, nullptr);
@@ -213,7 +243,8 @@ void RvkGraphicsPipeline::Destroy()
     RenderPass.Destroy(*mDevice);
 }
 
-void RvkGraphicsPipeline::CreateLayout() {
+void RvkGraphicsPipeline::CreateLayout()
+{
     VkPushConstantRange buffer_range{};
     buffer_range.offset = 0;
     buffer_range.size = sizeof(DrawPushConstants);
@@ -229,13 +260,7 @@ void RvkGraphicsPipeline::CreateLayout() {
         .pImmutableSamplers = nullptr,
     };
 
-    VkDescriptorSetLayoutBinding image_layout_binding {
-        .binding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .pImmutableSamplers = nullptr,
-    };
+
 
     // VkDescriptorSetLayoutBinding sampler_layout_binding {
     //     .binding = 1,
@@ -258,10 +283,21 @@ void RvkGraphicsPipeline::CreateLayout() {
 
     VkResult status;
 
-    status = vkCreateDescriptorSetLayout(mDevice->Device, &ds_layout_info, nullptr, &MainDescriptorSetLayout);
+    status = vkCreateDescriptorSetLayout(mDevice->Device, &ds_layout_info, nullptr, &DeferredDescriptorSetLayout);
     if (status != VK_SUCCESS) {
         FxModulePanic("Failed to create pipeline descriptor set layout", status);
     }
+
+
+    ////////////////////////////////////
+
+    VkDescriptorSetLayoutBinding image_layout_binding {
+        .binding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .pImmutableSamplers = nullptr,
+    };
 
     VkDescriptorSetLayoutCreateInfo mat_layout_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -275,7 +311,7 @@ void RvkGraphicsPipeline::CreateLayout() {
     }
 
     VkDescriptorSetLayout layouts[] = {
-        MainDescriptorSetLayout,
+        DeferredDescriptorSetLayout,
         MaterialDescriptorSetLayout,
     };
 

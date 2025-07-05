@@ -12,6 +12,7 @@
 #include "RvkGpuBuffer.hpp"
 #include "RvkPipeline.hpp"
 #include "RvkTexture.hpp"
+#include "RvkSampler.hpp"
 
 #include <Renderer/Constants.hpp>
 
@@ -74,7 +75,7 @@ public:
         return write;
     }
 
-    VkWriteDescriptorSet GetImageWriteDescriptor(uint32 bind_dest, const RvkTexture& texture, VkImageLayout layout, VkDescriptorType type);
+    VkWriteDescriptorSet GetImageWriteDescriptor(uint32 bind_dest, const RvkTexture& texture, const RvkSampler& sampler, VkImageLayout layout, VkDescriptorType type);
 
     void SubmitWrites(FxSizedArray<VkWriteDescriptorSet>& to_write)
     {

@@ -1,9 +1,5 @@
 #version 450
 
-// layout(binding = 0) uniform UniformBufferObject {
-// mat4 MvpMatrix;
-// } StaticUbo;
-
 layout(binding = 1) uniform UniformBufferObject {
     mat4 MvpMatrix;
 } Ubo;

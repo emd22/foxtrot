@@ -78,7 +78,7 @@ public:
     }
 };
 
-void CreateSolidPipeline(RvkGraphicsPipeline& pipeline)
+void CreateDeferredPipeline(RvkGraphicsPipeline& pipeline)
 {
     ShaderList shader_list;
 
@@ -89,7 +89,19 @@ void CreateSolidPipeline(RvkGraphicsPipeline& pipeline)
     shader_list.Fragment = fragment_shader.ShaderModule;
 
     pipeline.Create(shader_list);
+}
 
+void CreateFinalPassPipeline(RvkGraphicsPipeline& deferred)
+{
+    ShaderList shader_list;
+
+    RvkShader vertex_shader("../shaders/deferred.vert.spv", RvkShaderType::Vertex);
+    RvkShader fragment_shader("../shaders/deferred.frag.spv", RvkShaderType::Fragment);
+
+    shader_list.Vertex = vertex_shader.ShaderModule;
+    shader_list.Fragment = fragment_shader.ShaderModule;
+
+    deferred.Create(shader_list);
 }
 
 int main()
@@ -125,10 +137,18 @@ int main()
 
     RvkGraphicsPipeline pipeline;
 
-    CreateSolidPipeline(pipeline);
+    CreateFinalPassPipeline(pipeline);
     Renderer->Swapchain.CreateSwapchainFramebuffers(&pipeline);
 
+
+    RvkGraphicsPipeline deferred_pipeline;
+    CreateDeferredPipeline(deferred_pipeline);
+
     Renderer->DescriptorPool.AddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, RendererFramesInFlight);
+    Renderer->DescriptorPool.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, RendererFramesInFlight);
+    Renderer->DescriptorPool.Create(Renderer->GetDevice(), RendererFramesInFlight);
+
+
     Renderer->DescriptorPool.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, RendererFramesInFlight);
     Renderer->DescriptorPool.Create(Renderer->GetDevice(), RendererFramesInFlight);
 
@@ -180,7 +200,7 @@ int main()
     // helmet_object.Attach(script_instance);
 
     for (RvkFrameData& frame : Renderer->Frames) {
-        frame.DescriptorSet.Create(Renderer->DescriptorPool, pipeline.MainDescriptorSetLayout);
+        frame.DescriptorSet.Create(Renderer->DescriptorPool, pipeline.DeferredDescriptorSetLayout);
 
         VkDescriptorBufferInfo ubo_info{
             .buffer = frame.Ubo.Buffer,
@@ -214,7 +234,7 @@ int main()
 
     camera.Position.Z += 5.0f;
 
-    Mat4f model_matrix = Mat4f::AsTranslation(FxVec3f(0, 0, 0));
+    // Mat4f model_matrix = Mat4f::AsTranslation(FxVec3f(0, 0, 0));
 
     FxSizedArray<VkDescriptorSet> sets_to_bind;
     sets_to_bind.InitSize(2);

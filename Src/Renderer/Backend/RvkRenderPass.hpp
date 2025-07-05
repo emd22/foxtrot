@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <Core/FxSizedArray.hpp>
+
 class RvkSwapchain;
 class RvkGpuDevice;
 class RvkCommandBuffer;
@@ -9,7 +11,12 @@ class RvkCommandBuffer;
 class RvkRenderPass
 {
 public:
-    void Create(RvkGpuDevice &device, RvkSwapchain &swapchain);
+    void Create(
+        const RvkGpuDevice& device,
+        const RvkSwapchain& swapchain,
+        FxSizedArray<VkAttachmentDescription>& color_attachments,
+        VkAttachmentDescription depth_attachment
+    );
 
     void Begin();
     void End();

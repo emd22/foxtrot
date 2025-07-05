@@ -152,7 +152,7 @@ void FxMaterial::Destroy()
         VkDescriptorImageInfo image_info { \
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, \
             .imageView = img->Texture.Image.View, \
-            .sampler = img->Texture.Sampler, \
+            .sampler = Pipeline->ColorSampler.Sampler, \
         }; \
         VkWriteDescriptorSet image_write { \
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, \

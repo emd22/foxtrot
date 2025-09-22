@@ -1,41 +1,22 @@
 #pragma once
 
-#include <cstdlib>
+#include <Core/FxTypes.hpp>
 
-#define FX_PAGED_ARRAY_ALLOC(type_, size_) reinterpret_cast<type_*>(std::malloc(size_))
-#define FX_PAGED_ARRAY_FREE(type_, ptr_)   std::free(reinterpret_cast<void*>(ptr_))
-
-#include <Core/FxPagedArrayImpl.hpp>
-
-#undef FX_PAGED_ARRAY_ALLOC
-#undef FX_PAGED_ARRAY_FREE
-
-#if 0
-#include "../FxPanic.hpp"
-#include "../FxTypes.hpp"
-
-#ifdef FX_PAGED_ARRAY_USE_MALLOC
-#include <cstdlib>
-
-#define FX_PAGED_ARRAY_ALLOC(type_, n_bytes_) reinterpret_cast<type_>(std::malloc(n_bytes_))
-#define FX_PAGED_ARRAY_FREE(type_, ptr_)      std::free(reinterpret_cast<void*>(ptr_));
-
-#else
-
-#include <Core/MemPool/FxMemPool.hpp>
-
-#define FX_PAGED_ARRAY_ALLOC(type_, n_bytes_) reinterpret_cast<type_>(std::malloc(n_bytes_))
-#define FX_PAGED_ARRAY_FREE(type_, ptr_)      std::free(reinterpret_cast<void*>(ptr_));
-
+#ifndef FX_PAGED_ARRAY_ALLOC
+#warning "FX_PAGED_ARRAY_ALLOC is not defined!"
 #endif
 
-template <typename ElementType>
-class FxMPPagedArray
+#ifndef FX_PAGED_ARRAY_FREE
+#warning "FX_PAGED_ARRAY_FREE is not defined!"
+#endif
+
+template <typename TElementType>
+class FxPagedArray
 {
 public:
     struct Page
     {
-        ElementType* Data;
+        TElementType* Data;
 
         /** The number of elements in use in `Data` */
         uint32 Size;
@@ -86,7 +67,7 @@ public:
             return *this;
         }
 
-        ElementType& operator*() { return mCurrentPage->Data[mCurrentIndex]; }
+        TElementType& operator*() { return mCurrentPage->Data[mCurrentIndex]; }
 
         bool operator!=(const Iterator& other)
         {
@@ -97,11 +78,11 @@ public:
         uint32 mCurrentIndex = 0;
     };
 
-    FxMPPagedArray() = default;
+    FxPagedArray() = default;
 
-    FxMPPagedArray(uint32 page_node_capacity) { Create(page_node_capacity); }
+    FxPagedArray(uint32 page_node_capacity) { Create(page_node_capacity); }
 
-    FxMPPagedArray& operator=(const FxMPPagedArray& other)
+    FxPagedArray& operator=(const FxPagedArray& other)
     {
         FirstPage = other.FirstPage;
         CurrentPage = other.CurrentPage;
@@ -114,7 +95,7 @@ public:
         return *this;
     }
 
-    FxMPPagedArray& operator=(FxMPPagedArray&& other)
+    FxPagedArray& operator=(FxPagedArray&& other)
     {
         FirstPage = other.FirstPage;
         CurrentPage = other.CurrentPage;
@@ -176,11 +157,11 @@ public:
 
     bool IsInited() const { return (FirstPage != nullptr && CurrentPage != nullptr); }
 
-    ElementType* Insert()
+    TElementType* Insert()
     {
         // Create a new item and initialize it
-        ElementType* element = &CurrentPage->Data[CurrentPage->Size];
-        new (element) ElementType;
+        TElementType* element = &CurrentPage->Data[CurrentPage->Size];
+        new (element) TElementType;
 
         // Move to the next index
         ++CurrentPage->Size;
@@ -197,16 +178,16 @@ public:
             CurrentPage->Next = new_page;
             CurrentPage = new_page;
 
-            FxLogDebug("Allocating new page for FxMPPagedArray");
+            FxLogDebug("Allocating new page for FxPagedArray");
         }
 
         return element;
     }
 
-    void Insert(const ElementType& element)
+    void Insert(const TElementType& element)
     {
-        ElementType* new_element = &CurrentPage->Data[CurrentPage->Size];
-        new (new_element) ElementType(element);
+        TElementType* new_element = &CurrentPage->Data[CurrentPage->Size];
+        new (new_element) TElementType(element);
 
         ++CurrentPage->Size;
 
@@ -222,17 +203,17 @@ public:
             CurrentPage->Next = new_page;
             CurrentPage = new_page;
 
-            FxLogDebug("Allocating new page for FxMPPagedArray");
+            FxLogDebug("Allocating new page for FxPagedArray");
         }
     }
 
-    Page* FindPageForElement(ElementType* value)
+    Page* FindPageForElement(TElementType* value)
     {
         Page* current_page = CurrentPage;
 
         while (current_page != nullptr) {
             const void* data_start_ptr = reinterpret_cast<char*>(current_page->Data);
-            const void* data_end_ptr = data_start_ptr + (sizeof(ElementType) * PageNodeCapacity);
+            const void* data_end_ptr = data_start_ptr + (sizeof(TElementType) * PageNodeCapacity);
 
             const char* value_u8 = reinterpret_cast<char*>(value);
 
@@ -244,9 +225,9 @@ public:
         return nullptr;
     }
 
-    ElementType& GetLast() { return CurrentPage->Data[CurrentPage->Size - 1]; }
+    TElementType& GetLast() { return CurrentPage->Data[CurrentPage->Size - 1]; }
 
-    ElementType* RemoveLast()
+    TElementType* RemoveLast()
     {
         // If there are no pages remaining, return null
         if (CurrentPage == nullptr) {
@@ -255,7 +236,7 @@ public:
 
         SizeCheck(CurrentPage->Size);
 
-        ElementType* element = &GetLast();
+        TElementType* element = &GetLast();
 
         // If there are no items left in the page and there is another page before this one, switch
         // to that page.
@@ -319,9 +300,9 @@ public:
     }
 
 
-    ElementType& operator[](size_t index) { return Get(index); }
+    TElementType& operator[](size_t index) { return Get(index); }
 
-    ElementType& Get(size_t index)
+    TElementType& Get(size_t index)
     {
         Page* page = nullptr;
         const uint32 dest_page_index = (index / PageNodeCapacity);
@@ -379,7 +360,7 @@ public:
         CurrentPage = nullptr;
     }
 
-    ~FxMPPagedArray()
+    ~FxPagedArray()
     {
         if (FirstPage == nullptr) {
             return;
@@ -392,7 +373,7 @@ private:
     Page* AllocateNewPage(Page* prev, Page* next)
     {
         // Allocate and initialize the page object
-        void* allocated_page = std::malloc(sizeof(Page));
+        void* allocated_page = FX_PAGED_ARRAY_ALLOC(Page, sizeof(Page));
         if (allocated_page == nullptr) {
             FxPanic("FxPagedArray", "Memory error allocating page");
             return nullptr; // for msvc
@@ -405,14 +386,14 @@ private:
         page->Prev = prev;
 
         // Allocate the buffer of nodes in the page
-        void* allocated_nodes = std::malloc(sizeof(ElementType) * PageNodeCapacity);
+        void* allocated_nodes = FX_PAGED_ARRAY_ALLOC(TElementType, (sizeof(TElementType) * PageNodeCapacity));
 
         if (allocated_nodes == nullptr) {
             FxPanic("FxPagedArray", "Memory error allocating page data");
             return nullptr; // for msvc
         }
 
-        page->Data = static_cast<ElementType*>(allocated_nodes);
+        page->Data = static_cast<TElementType*>(allocated_nodes);
 
         ++CurrentPageIndex;
 
@@ -437,4 +418,3 @@ public:
 
     uint32 TrackedSize = 0;
 };
-#endif

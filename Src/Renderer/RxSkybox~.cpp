@@ -1,7 +1,6 @@
-#include "RxSkybox.hpp"
-
 #include "Backend/RxShader.hpp"
 #include "FxEngine.hpp"
+#include "RxSkybox.hpp"
 
 #include <Core/FxPanic.hpp>
 #include <Renderer/FxCamera.hpp>
@@ -158,17 +157,18 @@ VkPipelineLayout RxSkyboxRenderer::CreateSkyboxPipelineLayout()
 
 void RxSkyboxRenderer::BuildDescriptorSets(uint32 frame_index)
 {
-    
-    
+    // FxStackArray<VkWriteDescriptorSet, 1> write_infos;
+
+    // {
     const int binding_index = 0;
 
-    const VkDescriptorImageInfo positions_image_info {
+    VkDescriptorImageInfo positions_image_info {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .imageView = SkyAttachment->View,
         .sampler = gRenderer->Swapchain.ColorSampler.Sampler,
     };
 
-    const VkWriteDescriptorSet positions_write {
+    VkWriteDescriptorSet positions_write {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
@@ -176,7 +176,11 @@ void RxSkyboxRenderer::BuildDescriptorSets(uint32 frame_index)
         .dstBinding = binding_index,
         .dstArrayElement = 0,
         .pImageInfo = &positions_image_info,
+
     };
+
+    //     write_infos.Insert(positions_write);
+    // }
 
     vkUpdateDescriptorSets(gRenderer->GetDevice()->Device, 1, &positions_write, 0, nullptr);
 }

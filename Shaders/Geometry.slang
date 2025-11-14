@@ -59,8 +59,9 @@ struct FSIn
     float2 vUV : TEXCOORD0;
 };
 
-layout(set = 0, binding = 0) Sampler2D sAlbedo;
-layout(set = 1, binding = 0) StructuredBuffer<Material> bMaterialBuffer;
+layout(set = 0, binding = 0) Texture2D tAlbedo;
+layout(set = 1, binding = 0) Sampler2D sAlbedo;
+layout(set = 2, binding = 0) StructuredBuffer<Material> bMaterialBuffer;
 
 [shader("fragment")]
 

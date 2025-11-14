@@ -137,6 +137,8 @@ void FoxtrotGame::CreateGame()
     pHelmetObject->SetPhysicsEnabled(false);
     gPhysics->OptimizeBroadPhase();
 
+    mMainScene.Attach(pHelmetObject);
+
 
     pPistolObject = FxAssetManager::LoadObject("../Models/PistolTextured.glb", { .KeepInMemory = true });
     pPistolObject->WaitUntilLoaded();

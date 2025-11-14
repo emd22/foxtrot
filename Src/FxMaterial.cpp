@@ -31,7 +31,8 @@ void FxMaterialManager::Create(uint32 entities_per_page)
     RxDescriptorPool& dp = mDescriptorPool;
 
     if (!dp.Pool) {
-        dp.AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3);
+        dp.AddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 3);
+        dp.AddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 3);
         dp.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 3);
         dp.Create(gRenderer->GetDevice(), MaxMaterials);
     }
@@ -172,7 +173,7 @@ bool FxMaterial::Bind(RxCommandBuffer* cmd)
         Build();
     }
 
-    if (!IsReady() || !mDescriptorSet) {
+    if (!IsReady() || !mSamplerDescriptorSet || !mTextureDescriptorSet) {
         return false;
     }
 
@@ -186,7 +187,8 @@ bool FxMaterial::Bind(RxCommandBuffer* cmd)
 
     FxMaterialManager& manager = FxMaterialManager::GetGlobalManager();
 
-    VkDescriptorSet sets_to_bind[] = { mDescriptorSet.Set, manager.mMaterialPropertiesDS.Set };
+    VkDescriptorSet sets_to_bind[] = { mSamplerDescriptorSet.Set, mTextureDescriptorSet.Set,
+                                       manager.mMaterialPropertiesDS.Set };
 
     const uint32 num_sets = FxSizeofArray(sets_to_bind);
     const uint32 properties_offset = static_cast<uint32>(mMaterialPropertiesIndex * sizeof(FxMaterialProperties));
@@ -273,35 +275,64 @@ FxMaterialComponent::Status FxMaterialComponent::Build(const FxRef<RxSampler>& s
 }
 
 
-#define PUSH_IMAGE_IF_SET(img, binding)                                                                                \
-    if (img != nullptr) {                                                                                              \
-        const VkDescriptorImageInfo image_info {                                                                       \
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                   \
-            .imageView = img->Texture.Image.View,                                                                      \
-            .sampler = img->Texture.Sampler->Sampler,                                                                  \
-        };                                                                                                             \
-        const VkWriteDescriptorSet image_write {                                                                       \
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                                                           \
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,                                               \
-            .descriptorCount = 1,                                                                                      \
-            .dstSet = descriptor_set.Set,                                                                              \
-            .dstBinding = binding,                                                                                     \
-            .dstArrayElement = 0,                                                                                      \
-            .pImageInfo = write_image_infos.Insert(image_info),                                                        \
-        };                                                                                                             \
-        write_descriptor_sets.Insert(image_write);                                                                     \
-    }
+// #define PUSH_IMAGE_IF_SET(img, binding)                                                                                \
+
 
 #define BUILD_MATERIAL_COMPONENT(component_, sampler_)                                                                 \
     if (component_.Build(sampler_) == FxMaterialComponent::Status::NotReady) {                                         \
         return;                                                                                                        \
     }
 
+FX_FORCE_INLINE static void BuildImage(const FxRef<FxAssetImage>& img, uint32 base_binding, RxDescriptorSet& sampler_ds,
+                                       RxDescriptorSet& image_ds,
+                                       FxSizedArray<VkDescriptorImageInfo>& image_info_buffer,
+                                       FxSizedArray<VkWriteDescriptorSet>& write_descriptor_set_buffer)
+{
+    if (img == nullptr) {
+        return;
+    }
+
+    VkDescriptorImageInfo sampler_info {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .sampler = img->Texture.Sampler->Sampler,
+    };
+    VkWriteDescriptorSet sampler_write {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .descriptorCount = 1,
+        .dstSet = sampler_ds.Set,
+        .dstBinding = base_binding,
+        .dstArrayElement = 0,
+        .pImageInfo = image_info_buffer.Insert(sampler_info),
+    };
+    write_descriptor_set_buffer.Insert(sampler_write);
+
+    VkDescriptorImageInfo image_info {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageView = img->Texture.Image.View,
+    };
+    VkWriteDescriptorSet image_write {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .descriptorCount = 1,
+        .dstSet = image_ds.Set,
+        .dstBinding = base_binding,
+        .dstArrayElement = 0,
+        .pImageInfo = image_info_buffer.Insert(image_info),
+    };
+    write_descriptor_set_buffer.Insert(image_write);
+}
+
 void FxMaterial::Build()
 {
-    if (!mDescriptorSet.IsInited()) {
-        mDescriptorSet.Create(FxMaterialManager::GetDescriptorPool(),
-                              gRenderer->pDeferredRenderer->DsLayoutGPassMaterial);
+    if (!mSamplerDescriptorSet.IsInited()) {
+        mSamplerDescriptorSet.Create(FxMaterialManager::GetDescriptorPool(),
+                                     gRenderer->pDeferredRenderer->DsLayoutGPassMaterialSamplers);
+    }
+
+    if (!mTextureDescriptorSet.IsInited()) {
+        mTextureDescriptorSet.Create(FxMaterialManager::GetDescriptorPool(),
+                                     gRenderer->pDeferredRenderer->DsLayoutGPassMaterialTextures);
     }
 
     FxMaterialManager& manager = FxMaterialManager::GetGlobalManager();
@@ -313,14 +344,17 @@ void FxMaterial::Build()
     // Update the material descriptor
     {
         constexpr int max_images = static_cast<int>(FxMaterial::ResourceType::eMaxImages);
-        FxStackArray<VkDescriptorImageInfo, max_images> write_image_infos;
-        FxStackArray<VkWriteDescriptorSet, max_images> write_descriptor_sets;
+        FxSizedArray<VkDescriptorImageInfo> write_image_infos(max_images);
+        FxSizedArray<VkWriteDescriptorSet> write_descriptor_sets(max_images);
 
-        RxDescriptorSet& descriptor_set = mDescriptorSet;
+        BuildImage(Diffuse.pTexture, 0, mSamplerDescriptorSet, mTextureDescriptorSet, write_image_infos,
+                   write_descriptor_sets);
+
+        // RxDescriptorSet& descriptor_set = mDescriptorSet;
 
         // Push material textures
-        PUSH_IMAGE_IF_SET(Diffuse.pTexture, 0);
-        PUSH_IMAGE_IF_SET(Normal.pTexture, 0);
+        // PUSH_IMAGE_IF_SET(Diffuse.pTexture, 0);
+        // PUSH_IMAGE_IF_SET(Normal.pTexture, 2);
 
         vkUpdateDescriptorSets(gRenderer->GetDevice()->Device, write_descriptor_sets.Size, write_descriptor_sets.Data,
                                0, nullptr);

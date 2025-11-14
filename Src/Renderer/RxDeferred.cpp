@@ -102,12 +102,18 @@ VkPipelineLayout RxDeferredRenderer::CreateGPassPipelineLayout()
     // Fragment descriptor set
     {
         RxDsLayoutBuilder builder {};
-        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, RxShaderType::eFragment);
-        DsLayoutGPassMaterial = builder.Build();
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, RxShaderType::eFragment);
+        DsLayoutGPassMaterialTextures = builder.Build();
+    }
+    {
+        RxDsLayoutBuilder builder {};
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_SAMPLER, RxShaderType::eFragment);
+        DsLayoutGPassMaterialSamplers = builder.Build();
     }
 
-    FxStackArray<VkDescriptorSetLayout, 2> layouts = {
-        DsLayoutGPassMaterial,
+    FxStackArray<VkDescriptorSetLayout, 3> layouts = {
+        DsLayoutGPassMaterialSamplers,
+        DsLayoutGPassMaterialTextures,
         DsLayoutLightingMaterialProperties,
     };
 
@@ -186,9 +192,13 @@ void RxDeferredRenderer::DestroyGPassPipeline()
         vkDestroyDescriptorSetLayout(device, DsLayoutGPassVertex, nullptr);
         DsLayoutGPassVertex = nullptr;
     }
-    if (DsLayoutGPassMaterial) {
-        vkDestroyDescriptorSetLayout(device, DsLayoutGPassMaterial, nullptr);
-        DsLayoutGPassMaterial = nullptr;
+    if (DsLayoutGPassMaterialSamplers) {
+        vkDestroyDescriptorSetLayout(device, DsLayoutGPassMaterialSamplers, nullptr);
+        DsLayoutGPassMaterialSamplers = nullptr;
+    }
+    if (DsLayoutGPassMaterialTextures) {
+        vkDestroyDescriptorSetLayout(device, DsLayoutGPassMaterialTextures, nullptr);
+        DsLayoutGPassMaterialTextures = nullptr;
     }
 
     PlGeometry.Destroy();

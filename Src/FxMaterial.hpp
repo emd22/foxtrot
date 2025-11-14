@@ -100,7 +100,8 @@ public:
     FxHash NameHash { 0 };
     std::string Name = "";
 
-    RxDescriptorSet mDescriptorSet {};
+    RxDescriptorSet mTextureDescriptorSet {};
+    RxDescriptorSet mSamplerDescriptorSet {};
 
     RxGraphicsPipeline* pPipeline = nullptr;
 

@@ -1,50 +1,37 @@
+/*
+ * Author:  Ethan MacDonald
+ * Created: 31/01/26
+ * Purpose: Thread safe reference counted pointer classes
+ */
+
 #pragma once
 
-#include "FxDefines.hpp"
-#include "FxMemory.hpp"
-#include "FxPanic.hpp"
-#include "FxTypes.hpp"
+#include "FxRef.hpp"
 
-#ifdef FX_DEBUG_REF
-#include <Core/FxLog.hpp>
-#endif
-
-#include <atomic>
-#include <cstddef>
-
-/** The internal reference count for `FxRef`. */
-struct FxRefCount
-{
-    using IntType = uint32;
-    using RefCountType = std::atomic<IntType>;
-
-    /** Increments the reference count */
-    void Inc() { ++Count; }
-
-    /** Decrements the reference count */
-    IntType Dec() { return (--Count); }
-
-public:
-    RefCountType Count = 1;
-};
-
+/**
+ * @brief Container for a thread-safe reference counted pointer.
+ */
 template <typename T>
-class FxRef
+class FxTSRef
 {
 public:
-    FxRef() : mRefCnt(nullptr), mPtr(nullptr) {}
-    FxRef(nullptr_t np) : mRefCnt(nullptr), mPtr(nullptr) {}
+    FxTSRef() : mRefCnt(nullptr), mPtr(nullptr) {}
+    FxTSRef(nullptr_t np) : mRefCnt(nullptr), mPtr(nullptr) {}
+
+    static FxTSRef<T> FromRef(const FxRef<T>& ref) {}
 
     /**
      * Constructs a new FxRef from a pointer.
      */
-    FxRef(T* ptr) : FxRef(ptr, FxMemPool::Alloc<FxRefCount>(sizeof(FxRefCount))) {}
+    FxTSRef(T* ptr) : FxTSRef(ptr, FxMemPool::Alloc<FxRefCount>(sizeof(FxRefCount))) {}
 
     /**
      * Constructs a new FxRef from a pointer and a pre-allocated ref count.
      */
-    FxRef(T* ptr, FxRefCount* cnt)
+    FxTSRef(T* ptr, FxRefCount* cnt)
     {
+        FxSpinThreadGuard guard(&IsBusy);
+
         mRefCnt = cnt;
 
         mPtr = ptr;
@@ -62,8 +49,11 @@ public:
      */
     template <typename DerivedType>
         requires std::is_base_of_v<T, DerivedType>
-    FxRef(const FxRef<DerivedType>& other)
+    FxTSRef(const FxRef<DerivedType>& other)
     {
+        FxSpinThreadGuard other_guard(&other.IsBusy);
+        FxSpinThreadGuard guard(&IsBusy);
+
         mRefCnt = other.mRefCnt;
         mPtr = other.mPtr;
 
@@ -77,8 +67,11 @@ public:
      */
     template <typename BaseType>
         requires std::is_base_of_v<BaseType, T>
-    FxRef(const FxRef<BaseType>& other)
+    FxTSRef(const FxRef<BaseType>& other)
     {
+        FxSpinThreadGuard other_guard(&other.IsBusy);
+        FxSpinThreadGuard guard(&IsBusy);
+
         mRefCnt = other.mRefCnt;
         mPtr = static_cast<T*>(other.mPtr);
 
@@ -91,8 +84,11 @@ public:
     /**
      * Inherits from another FxRef that contains the same type.
      */
-    FxRef(const FxRef& other)
+    FxTSRef(const FxTSRef& other)
     {
+        FxSpinThreadGuard other_guard(&other.IsBusy);
+        FxSpinThreadGuard guard(&IsBusy);
+
         mRefCnt = other.mRefCnt;
         mPtr = other.mPtr;
 
@@ -102,8 +98,11 @@ public:
     }
 
 
-    FxRef(FxRef&& other)
+    FxTSRef(FxTSRef&& other)
     {
+        FxSpinThreadGuard other_guard(&other.IsBusy);
+        FxSpinThreadGuard guard(&IsBusy);
+
         // No need to Inc or Dec the ref count here as we are moving the value.
         mRefCnt = std::move(other.mRefCnt);
         mPtr = std::move(other.mPtr);
@@ -113,7 +112,12 @@ public:
     }
 
 
-    ~FxRef() { DecRef(); }
+    ~FxTSRef()
+    {
+        FxSpinThreadGuard guard(&IsBusy);
+
+        DecRef();
+    }
 
     /**
      * Constructs a new FxRef for the given type using the provided arguments.
@@ -141,6 +145,8 @@ public:
     /** Retrieves the internal usage count for the reference. */
     uint32 GetRefCount()
     {
+        FxSpinThreadGuard guard(&IsBusy);
+
         if (mRefCnt) {
             return mRefCnt->Count;
         }
@@ -152,8 +158,11 @@ public:
     // Operator overloads
     ///////////////////////////////
 
-    FxRef& operator=(const FxRef& other)
+    FxTSRef& operator=(const FxTSRef& other)
     {
+        FxSpinThreadGuard guard(&IsBusy);
+        FxSpinThreadGuard other_guard(&other.IsBusy);
+
         // If there is already a pointer in this reference, decrement or destroy it
         // This will be an infinite memory printing machine if this is not here
         if (mPtr && mRefCnt) {
@@ -172,6 +181,8 @@ public:
 
     T* operator->() const noexcept
     {
+        FxSpinThreadGuard guard(&IsBusy);
+
         FxAssert(mRefCnt != nullptr && mPtr != nullptr);
 
         return mPtr;
@@ -179,14 +190,26 @@ public:
 
     T& operator*() const noexcept
     {
+        FxSpinThreadGuard guard(&IsBusy);
+
         FxAssert((mRefCnt != nullptr && mPtr != nullptr));
 
         return *mPtr;
     }
 
-    bool operator==(nullptr_t np) const noexcept { return mPtr == nullptr; }
+    bool operator==(nullptr_t np) const noexcept
+    {
+        FxSpinThreadGuard guard(&IsBusy);
 
-    operator bool() const noexcept { return mPtr != nullptr; }
+        return mPtr == nullptr;
+    }
+
+    operator bool() const noexcept
+    {
+        FxSpinThreadGuard guard(&IsBusy);
+
+        return mPtr != nullptr;
+    }
 
     void SetNull()
     {
@@ -253,7 +276,7 @@ private:
         // If the reference count is zero, we can free the ptr as it is not being used by any other objects.
         if (mRefCnt->Dec() == 0) {
 #ifdef FX_DEBUG_REF
-            FxLogDebug("Destroying FxRef {:p} (RefCnt: {:p})", reinterpret_cast<void*>(mPtr),
+            FxLogDebug("Destroying FxTSRef {:p} (RefCnt: {:p})", reinterpret_cast<void*>(mPtr),
                        reinterpret_cast<void*>(mRefCnt));
 #endif
             // Destroy the reference
@@ -283,34 +306,4 @@ public:
 
     /** Denotes if the ref is currently in use from some thread */
     mutable FxAtomicFlag IsBusy {};
-};
-
-/**
- * Constructs a new `FxRef` for the type `T` using the arguments `args`.
- * @tparam T the undelying type of the reference.
- * @tparam Types the types of the arguments passed in.
- */
-template <typename T, typename... Types>
-FxRef<T> FxMakeRef(Types... args)
-{
-    return FxRef<T>::New(std::forward<Types>(args)...);
-}
-
-
-template <typename TUnderlyingType>
-struct FxRefContext
-{
-public:
-    FxRefContext(const FxRef<TUnderlyingType>& ref) : mRef(ref)
-    {
-        FxAssert(mRef.mRefCnt != nullptr);
-        mRef.mRefCnt->Inc();
-    }
-
-    TUnderlyingType* Get() { return mRef.mPtr; }
-
-    ~FxRefContext() { mRef.mRefCnt->Dec(); }
-
-private:
-    const FxRef<TUnderlyingType>& mRef;
 };

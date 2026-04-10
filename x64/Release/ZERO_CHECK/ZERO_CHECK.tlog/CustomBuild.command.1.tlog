@@ -1,0 +1,10 @@
+^C:\USERS\ETHAN\SOURCE\REPOS\FOXTROT\CMAKEFILES\66D2047625D7BDD5EAA8B68CA74C9F18\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ethan/source/repos/foxtrot -BC:/Users/ethan/source/repos/foxtrot --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/ethan/source/repos/foxtrot/foxtrot.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

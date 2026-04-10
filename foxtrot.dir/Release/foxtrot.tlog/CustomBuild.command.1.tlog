@@ -1,0 +1,10 @@
+^C:\USERS\ETHAN\SOURCE\REPOS\FOXTROT\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ethan/source/repos/foxtrot -BC:/Users/ethan/source/repos/foxtrot --check-stamp-file C:/Users/ethan/source/repos/foxtrot/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

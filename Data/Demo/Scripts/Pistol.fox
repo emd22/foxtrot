@@ -1,10 +1,4 @@
-
-/*
-    SG-10 Shotgun Script
-*/
-
 @include "./Scripts/WeaponBase.fox"
-
 
 proc OnLoad()
 {
@@ -18,9 +12,7 @@ proc OnLoad()
     );
 }
 
-proc Init() int
+proc ObjectInit()
 {
     global int OBJECTID;
-
-    return OBJECTID;
 }

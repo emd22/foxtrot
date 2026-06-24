@@ -1,0 +1,46 @@
+Meta = {
+    Name = "sponzatest"
+}
+
+Sun = {
+    Pos = [0.5, 2.0, -1.5]
+    Color = [250, 220, 192, 7]
+    AmbientColor = [75, 75, 72, 3]
+}
+
+
+/*
+Lights = {
+    TP1 = {
+        Type = $CLight.Point
+    }
+}
+*/
+
+
+Colliders = {
+    Floor = {
+        Pos = [0.0, -10.25, 0.0]
+        Box = { Size = [64.0, 1.0, 64.0] }
+    }
+    BrickWall = {
+        Pos = [0.0, 1.5, 5.0]
+        Box = { Size = [4.0, 4.0, 0.5] }
+    }
+}
+
+Objects = {
+    Skybox = {
+        Mesh = "/Skybox.glb"
+        Unlit = $True
+    }
+
+    Level = {
+        Mesh = "/Sponza.glb"
+        Scale = 0.01
+        Shadows = $True
+        ColliderRef = "Floor"
+        Pos = [0.0, -1.25, 0.0]
+    }
+
+}

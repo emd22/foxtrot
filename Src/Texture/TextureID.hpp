@@ -6,32 +6,32 @@
 namespace fx {
 
 /*
- *             ID Structure
+ *         Texture ID Structure
  * --------------------------------------
  * [I][   P   ][          LI            ]
  *
- * I  ( 1 bit ) ->  Is the ID invalid
- * P  ( 7 bits) ->  Page number
+ * I  ( 1 bit ) ->  Is the ID invalid (deleted or otherwise)
+ * P  ( 7 bits) ->  Reserved
  * LI (24 bits) ->  Local index
  */
 
 
-struct ObjectID
+struct TextureID
 {
 	using IDType = uint32;
 
-	static const ObjectID Null;
+	static const TextureID Null;
 
 	static const IDType scInvalidBit = (1U << 31);
 	static const IDType scIDMask = 0x00FFFFFF;
 
 public:
-	ObjectID() = default;
-	ObjectID(IDType id) : ID(id) {}
-	ObjectID(const ObjectID& other) : ID(other.ID) {}
+	TextureID() = default;
+	TextureID(IDType id) : ID(id) {}
+	TextureID(const TextureID& other) : ID(other.ID) {}
 
-	ObjectID& operator=(uint32 value) = delete;
-	ObjectID& operator=(const ObjectID& other)
+	TextureID& operator=(uint32 value) = delete;
+	TextureID& operator=(const TextureID& other)
 	{
 		ID = other.ID;
 		return *this;
@@ -39,16 +39,14 @@ public:
 
 	IDType operator()() const { return ID; }
 
-	bool operator==(const ObjectID& other) const { return ID == (other.ID & scIDMask); }
-	bool operator<(const ObjectID& other) const { return ID < other.ID; }
+	bool operator==(const TextureID& other) const { return ID == (other.ID & scIDMask); }
+	bool operator<(const TextureID& other) const { return ID < other.ID; }
 
 	FX_FORCE_INLINE IDType GetID() const { return (ID & scIDMask); }
 	FX_FORCE_INLINE bool IsNull() const { return ID == UINT32_MAX; }
 
 	FX_FORCE_INLINE bool IsInvalid() const { return (ID & scInvalidBit) != 0; }
 	FX_FORCE_INLINE void Invalidate() { ID |= scInvalidBit; };
-
-	FX_FORCE_INLINE IDType GetPageNumber() const { return ((ID & ~(scInvalidBit)) >> 24); }
 
 public:
 	IDType ID = UINT32_MAX;
@@ -58,20 +56,20 @@ public:
 
 namespace std {
 template <>
-struct hash<fx::ObjectID>
+struct hash<fx::TextureID>
 {
-	std::size_t operator()(const fx::ObjectID& id) const noexcept { return id.ID; }
+	std::size_t operator()(const fx::TextureID& id) const noexcept { return id.ID; }
 };
 } // namespace std
 
 
 template <>
-struct std::formatter<fx::ObjectID>
+struct std::formatter<fx::TextureID>
 {
 	auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
-	auto format(const fx::ObjectID& id, std::format_context& ctx) const
+	auto format(const fx::TextureID& id, std::format_context& ctx) const
 	{
-		return std::format_to(ctx.out(), "ObjectID({})", id.GetID());
+		return std::format_to(ctx.out(), "TextureID({})", id.GetID());
 	}
 };

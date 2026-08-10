@@ -16,8 +16,6 @@
 #include <Core/Defer.hpp>
 #include <Core/Ref.hpp>
 #include <Core/TSQueue.hpp>
-// #include <deque>
-// #include <mutex>
 
 namespace fx {
 class Camera;
@@ -206,7 +204,7 @@ public:
 
 	VmaAllocator GpuAllocator = nullptr;
 
-	GpuUploadContext UploadContext;
+	GpuUploadContext TransferContext;
 
 	bool bInitialized = false;
 	bool bDidFrameResize = false;

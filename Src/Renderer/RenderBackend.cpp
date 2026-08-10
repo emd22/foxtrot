@@ -142,25 +142,25 @@ void RenderBackend::Init(Vec2u window_size)
 
 void RenderBackend::InitUploadContext()
 {
-	UploadContext.CmdPool.Create(GetDevice(), GetDevice()->mQueueFamilies.GetTransferFamily());
-	UploadContext.CmdBuffer.Create(&UploadContext.CmdPool);
-	UploadContext.ImmediateCmdBuffer.Create(&UploadContext.CmdPool);
+	TransferContext.CmdPool.Create(GetDevice(), GetDevice()->mQueueFamilies.GetTransferFamily());
+	TransferContext.CmdBuffer.Create(&TransferContext.CmdPool);
+	TransferContext.ImmediateCmdBuffer.Create(&TransferContext.CmdPool);
 
-	Util::SetDebugLabel("UploadImmediate", VK_OBJECT_TYPE_COMMAND_BUFFER, UploadContext.ImmediateCmdBuffer.Cmd);
-	Util::SetDebugLabel("Upload", VK_OBJECT_TYPE_COMMAND_BUFFER, UploadContext.CmdBuffer.Cmd);
+	Util::SetDebugLabel("UploadImmediate", VK_OBJECT_TYPE_COMMAND_BUFFER, TransferContext.ImmediateCmdBuffer.Cmd);
+	Util::SetDebugLabel("Upload", VK_OBJECT_TYPE_COMMAND_BUFFER, TransferContext.CmdBuffer.Cmd);
 
-	UploadContext.UploadFence.Create();
-	UploadContext.ImmediateUploadFence.Create();
+	TransferContext.UploadFence.Create();
+	TransferContext.ImmediateUploadFence.Create();
 }
 
 void RenderBackend::DestroyUploadContext()
 {
-	UploadContext.CmdBuffer.Destroy();
-	UploadContext.ImmediateCmdBuffer.Destroy();
-	UploadContext.CmdPool.Destroy();
+	TransferContext.CmdBuffer.Destroy();
+	TransferContext.ImmediateCmdBuffer.Destroy();
+	TransferContext.CmdPool.Destroy();
 
-	UploadContext.UploadFence.Destroy();
-	UploadContext.ImmediateUploadFence.Destroy();
+	TransferContext.UploadFence.Destroy();
+	TransferContext.ImmediateUploadFence.Destroy();
 }
 
 void RenderBackend::InitFrames()
@@ -459,7 +459,7 @@ void RenderBackend::SubmitPushConstantsRaw(const CommandBuffer& cmd, const Pipel
 
 void RenderBackend::SubmitImmediateUploadCmd(RenderBackend::SubmitFunc upload_func)
 {
-	CommandBuffer& cmd = UploadContext.ImmediateCmdBuffer;
+	CommandBuffer& cmd = TransferContext.ImmediateCmdBuffer;
 
 	cmd.Record(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	upload_func(cmd);
@@ -474,20 +474,20 @@ void RenderBackend::SubmitImmediateUploadCmd(RenderBackend::SubmitFunc upload_fu
 
 	SpinLockContext<VkQueue> transfer_queue = GetDevice()->GetTransferQueue();
 
-	VkTry(vkQueueSubmit(transfer_queue.Get(), 1, &submit_info, UploadContext.ImmediateUploadFence.Get()),
+	VkTry(vkQueueSubmit(transfer_queue.Get(), 1, &submit_info, TransferContext.ImmediateUploadFence.Get()),
 		  "Error submitting upload buffer");
 
 	transfer_queue.Unlock();
 
-	UploadContext.ImmediateUploadFence.WaitFor();
-	UploadContext.ImmediateUploadFence.Reset();
+	TransferContext.ImmediateUploadFence.WaitFor();
+	TransferContext.ImmediateUploadFence.Reset();
 
-	UploadContext.CmdPool.Reset();
+	TransferContext.CmdPool.Reset();
 }
 
 void RenderBackend::SubmitUploadCmd(RenderBackend::SubmitFunc upload_func)
 {
-	CommandBuffer& cmd = UploadContext.CmdBuffer;
+	CommandBuffer& cmd = TransferContext.CmdBuffer;
 	upload_func(cmd);
 }
 
@@ -652,7 +652,7 @@ void RenderBackend::BeginLighting()
 	gPipelineCache->AddBufferOffset(0, gRenderer->LightBuffer.GetBaseOffset());
 	gPipelineCache->AddBufferOffset(1, gObjectManager->GetBaseOffset());
 	gPipelineCache->AddBufferOffset(1, 0);
-	gPipelineCache->Bind(ePipelineName::LightingDirectional, frame->CmdBuffer);
+	gPipelineCache->Bind(ePipelineName::Geometry, frame->CmdBuffer);
 
 	// pDeferredRenderer->DsLighting.BindWithOffset(0, frame->CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 	// 											 gPipelineCache->Request(ePipelineName::LightingDirectional),
@@ -662,16 +662,16 @@ void RenderBackend::BeginLighting()
 
 void RenderBackend::BeginUnlit()
 {
-	FrameData* frame = GetFrame();
+	// FrameData* frame = GetFrame();
 
-	pDeferredRenderer->LightPass.End();
+	// pDeferredRenderer->LightPass.End();
 
 
 	// Target* depth_target = gRenderer->pDeferredRenderer->GPass.GetTarget(ImageFormat::eD32_Float, 0);
 	// Assert(depth_target != nullptr);
 	// depth_target->Image.TransitionDepthToAttachment(gRenderer->GetFrame()->CommandBuffer);
 
-	pDeferredRenderer->UnlitPass.Begin(frame->CmdBuffer);
+	// pDeferredRenderer->UnlitPass.Begin(frame->CmdBuffer);
 
 	// gPipelineCache->AddBufferOffset(1, gObjectManager->GetBaseOffset());
 	// gPipelineCache->Bind(ePipelineName::Unlit, frame->CmdBuffer);
@@ -688,14 +688,10 @@ void RenderBackend::DoComposition(Camera& render_cam)
 
 	pDeferredRenderer->ForwardPass.End();
 
-	// pDeferredRenderer->UnlitPass.End();
-
 	pDeferredRenderer->CompPass.Begin(frame->CmdBuffer);
-	// gPipelineCache->Bind(ePipelineName::Composition, frame->CmdBuffer);
-
 	pDeferredRenderer->DoCompPass(render_cam);
-
 	pDeferredRenderer->CompPass.End();
+
 	frame->CmdBuffer.End();
 
 	PresentFrame();

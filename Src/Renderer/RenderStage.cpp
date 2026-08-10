@@ -107,10 +107,10 @@ void RenderStage::MakeClearValues()
 			continue;
 		}
 
-		if (attachment.Aspect == eImageAspectFlag::Depth) {
+		if (attachment.Aspect == eImageAspectFlag::Depth && attachment.LoadOp == eLoadOp::Clear) {
 			ClearValues.Insert(VkClearValue { .depthStencil = { 0.0f, 0U } });
 		}
-		else if (attachment.Aspect == eImageAspectFlag::Color) {
+		else if (attachment.Aspect == eImageAspectFlag::Color && attachment.LoadOp == eLoadOp::Clear) {
 			ClearValues.Insert(VkClearValue { .color = { { 0.0f, 0.0f, 0.0f, 0.0f } } });
 		}
 	}
@@ -143,8 +143,8 @@ void RenderStage::MarkFinalStage()
 
 void RenderStage::AddPresentTarget()
 {
-	mOutputTargets.Add(Target(gRenderer->Swapchain.Surface.Format, Target::scFullScreen, eLoadOp::DontCare,
-							  eStoreOp::Store, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR));
+	mOutputTargets.Add(Target(gRenderer->Swapchain.Surface.Format, Target::scFullScreen, eLoadOp::None, eStoreOp::Store,
+							  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR));
 }
 
 } // namespace fx::renderer

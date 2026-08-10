@@ -227,13 +227,13 @@ enum class eImageAspectFlag
 	Depth = VK_IMAGE_ASPECT_DEPTH_BIT,
 };
 
-struct TransitionLayoutOverrides
-{
-	std::optional<VkPipelineStageFlagBits> SrcStage = std::nullopt;
-	std::optional<VkPipelineStageFlagBits> DstStage = std::nullopt;
-	std::optional<VkAccessFlags> SrcAccessMask = std::nullopt;
-	std::optional<VkAccessFlags> DstAccessMask = std::nullopt;
-};
+// struct TransitionLayoutOverrides
+// {
+// 	std::optional<VkPipelineStageFlagBits> SrcStage = std::nullopt;
+// 	std::optional<VkPipelineStageFlagBits> DstStage = std::nullopt;
+// 	std::optional<VkAccessFlags> SrcAccessMask = std::nullopt;
+// 	std::optional<VkAccessFlags> DstAccessMask = std::nullopt;
+// };
 
 struct ImageCubemapOptions
 {
@@ -268,38 +268,27 @@ public:
 	void CreateFromData(renderer::CommandBuffer& cmd, const ImageInfo& info, eImageCreateFlags flags);
 
 
-	void UploadMip(renderer::CommandBuffer& cmd, uint32 mip_index, const Vec2u& size,
-				   const Slice<const uint8>& image_data);
-
 	/**
 	 * @brief Uploads multiple mip levels to an image
 	 */
 	void Upload(renderer::CommandBuffer& cmd, const ImageInfo& info);
 
-	void TransitionLayout(VkImageLayout new_layout, renderer::CommandBuffer& cmd, uint32 layer_count,
-						  std::optional<TransitionLayoutOverrides> overrides = std::nullopt);
 
-	void TransitionMip(VkImageLayout new_layout, renderer::CommandBuffer& cmd, uint32 mip_level, uint32 num_levels,
-					   std::optional<TransitionLayoutOverrides> overrides);
+	/**
+	 * @brief Acquire the texutre in the render queue, after handoff from the transfer queue.
+	 */
+	void RenderQueueAcquire() const;
 
-
-	void TransitionDepthToShaderRO(renderer::CommandBuffer& cmd);
-	void TransitionDepthToAttachment(renderer::CommandBuffer& cmd);
-
-	void CopyToMip(renderer::CommandBuffer& cmd, const renderer::RawGpuBuffer& buffer, VkImageLayout final_layout,
-				   Vec2u size, uint32 mip_level);
+	void TransferHandoff() const;
 
 
 	void CopyFromBuffer(renderer::CommandBuffer& cmd, const renderer::RawGpuBuffer& buffer, VkImageLayout final_layout,
-						Vec2u size, uint32 base_layer, uint32 mip_level);
+						Vec2u size, uint32 mip_level, uint32 num_mips);
 
 	void CreateLayeredImageFromCubemap(Image& cubemap, eImageFormat image_format, VkImageAspectFlags aspect_flags,
 									   ImageCubemapOptions options);
 
 	void MarkUploaded();
-
-
-	void SaveToFile(const String& path, eImageSaveFormat file_format);
 
 	VkImage Get() const { return InternalImage; }
 	FX_FORCE_INLINE bool IsInited() const { return (Get() != nullptr); }

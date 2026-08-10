@@ -12,11 +12,11 @@ namespace RenderBackendFwd {
 GpuDevice* GetDevice() { return gRenderer->GetDevice(); }
 FrameData* GetFrame() { return gRenderer->GetFrame(); }
 
-CommandBuffer& GetUploadCmd() { return gRenderer->UploadContext.CmdBuffer; }
+CommandBuffer& GetUploadCmd() { return gRenderer->TransferContext.CmdBuffer; }
 
 void SubmitImmediateUploadCmd(RenderBackend::SubmitFunc upload_func)
 {
-    gRenderer->SubmitImmediateUploadCmd(upload_func);
+	gRenderer->SubmitImmediateUploadCmd(upload_func);
 }
 
 CommandBuffer& GetCmd() { return gRenderer->GetFrame()->CmdBuffer; }

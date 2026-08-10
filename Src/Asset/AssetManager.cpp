@@ -483,6 +483,14 @@ static void ProcessLoadSuccess(LockContext<AssetItemData>& asset_data)
 	}
 }
 
+void AssetManager::ReleaseTextureTransfer(AssetTicket& ticket)
+{
+	using namespace renderer;
+
+	Image* texture = static_cast<Image*>(ticket.Get());
+	texture->TransferHandoff();
+}
+
 int32 AssetManager::CheckForUploadableData()
 {
 	using namespace renderer;
@@ -508,10 +516,10 @@ int32 AssetManager::CheckForUploadableData()
 
 	// Begin GPU upload
 	if (should_upload) {
-		gRenderer->UploadContext.UploadFence.WaitFor();
-		gRenderer->UploadContext.UploadFence.Reset();
+		gRenderer->TransferContext.UploadFence.WaitFor();
+		gRenderer->TransferContext.UploadFence.Reset();
 
-		gRenderer->UploadContext.CmdBuffer.Record();
+		gRenderer->TransferContext.CmdBuffer.Record();
 	}
 
 	for (AssetWorker* worker : WorkersWaitingToUpload) {
@@ -525,6 +533,11 @@ int32 AssetManager::CheckForUploadableData()
 			}
 			else if (asset_data->pLoader.IsValid()) {
 				asset_data->CreateGpuResource();
+
+				if (asset_data->LoadType == eAssetType::Image) {
+					ReleaseTextureTransfer(asset_data->Ticket);
+				}
+
 				++num_uploads;
 			}
 		}
@@ -533,7 +546,7 @@ int32 AssetManager::CheckForUploadableData()
 	SpinLockContext<VkQueue> transfer_queue = gRenderer->GetDevice()->GetTransferQueue();
 
 	if (should_upload) {
-		CommandBuffer& cmd = gRenderer->UploadContext.CmdBuffer;
+		CommandBuffer& cmd = gRenderer->TransferContext.CmdBuffer;
 		cmd.End();
 
 		const VkSubmitInfo submit_info = {
@@ -546,7 +559,7 @@ int32 AssetManager::CheckForUploadableData()
 		VkQueue vk_xfer_queue = transfer_queue.Get();
 
 		AssertMsg(vk_xfer_queue != nullptr, "Queue has not been initialized");
-		vkQueueSubmit(vk_xfer_queue, 1, &submit_info, gRenderer->UploadContext.UploadFence.Get());
+		vkQueueSubmit(vk_xfer_queue, 1, &submit_info, gRenderer->TransferContext.UploadFence.Get());
 	}
 
 	transfer_queue.Unlock();
@@ -658,7 +671,7 @@ int32 AssetManager::CheckForItemsToDelete()
 	}
 
 	// Wait for all uploads to finish. We cannot be actively loading the item we are deleting!
-	renderer::gRenderer->UploadContext.UploadFence.WaitFor();
+	renderer::gRenderer->TransferContext.UploadFence.WaitFor();
 
 	if (queue->First().TryDelete(mTickCounter)) {
 		++num_deletes;

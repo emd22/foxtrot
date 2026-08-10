@@ -177,6 +177,7 @@ public:
 	fx::Image* GetNullImage(eImageFormat format);
 	AssetTicket GetNullImageTicket(eImageFormat format);
 
+
 	/////////////////////////////////////
 	// General data loading
 	/////////////////////////////////////
@@ -243,6 +244,11 @@ private:
 	void AssetManagerUpdate();
 
 	AssetTicket NewTextureTicket();
+
+	/**
+	 * @brief Releases a texture from the transfer queue to be used in the main graphics queue.
+	 */
+	void ReleaseTextureTransfer(AssetTicket& ticket_data);
 
 	/**
 	 * @brief When there is excess free time in asset management, we can tyr and load higher detailed materials/models

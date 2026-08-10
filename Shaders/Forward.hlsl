@@ -225,6 +225,5 @@ FSOutput main(FSInput input)
 
 	output.vAlbedo = float4(attenuation * (visibility * diffuse_term + visibility * specular_term) * light_color.rgb * NdotL + ambient.rgb, 1.0);
 
-
     return output;
 }

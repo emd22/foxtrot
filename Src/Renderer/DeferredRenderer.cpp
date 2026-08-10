@@ -54,7 +54,7 @@ void DeferredRenderer::CreateUnlitPass()
 	{
 		Target* depth_target = UnlitPass.GetTarget(eImageFormat::D32_Float);
 		depth_target->LoadOp = eLoadOp::Load;
-		depth_target->StoreOp = eStoreOp::DontCare;
+		depth_target->StoreOp = eStoreOp::None;
 		depth_target->InitialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		depth_target->UseImageFromTarget(lp_depth_attachment);
 	}

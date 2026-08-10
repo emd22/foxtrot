@@ -228,18 +228,6 @@ Image MipmapGen::LoadMipmaps(renderer::CommandBuffer& cmd, const char* path)
 
 	image.CreateFromData(cmd, image_info, eImageCreateFlags::None);
 
-	// for (uint32 i = 1; i < num_mips; i++) {
-	// 	DataPackEntry* entry = dp.GetEntry(i, true);
-
-	// 	MipHeader* header = M_HEADER_PTR(base_mip->Data.pData);
-	// 	uint8* data = M_DATA_PTR(base_mip->Data.pData);
-	// 	uint32 data_size = M_DATA_SIZE(base_mip->Data);
-
-	// 	LogInfo("Loading mip {} with size {}x{}", header->MipLevel, header->SizeX, header->SizeY);
-
-	// 	image.UploadMip(cmd, header->MipLevel, Vec2u(header->SizeX, header->SizeY), MakeSlice<uint8>(data, data_size));
-	// }
-
 	return image;
 }
 

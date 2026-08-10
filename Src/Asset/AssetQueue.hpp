@@ -1,0 +1,58 @@
+#pragma once
+
+#include "AssetQueueItem.hpp"
+
+#include <deque>
+#include <mutex>
+
+namespace fx {
+
+class AssetQueue
+{
+public:
+	AssetQueue() = default;
+
+	void Push(AssetQueueItem&& value)
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+
+		mQueue.push_back(std::move(value));
+	}
+
+	bool PopIfAvailable(AssetQueueItem* item)
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+
+		if (mQueue.empty()) {
+			return false;
+		}
+
+		AssetQueueItem& queue_item = mQueue.front();
+		(*item) = std::move(queue_item);
+
+		mQueue.pop_front();
+
+		return true;
+	}
+
+	uint32 Size()
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+
+		return mQueue.size();
+	}
+
+	void Destroy()
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+
+		mQueue.clear();
+	}
+
+private:
+	std::deque<AssetQueueItem> mQueue;
+
+	std::mutex mMutex;
+};
+
+} // namespace fx

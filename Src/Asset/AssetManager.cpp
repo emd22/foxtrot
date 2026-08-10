@@ -366,7 +366,7 @@ AssetTicket AssetManager::UploadImage(const ImageInfo& img_info)
 
 	AssertMsg(img_info.ImageData.pData != nullptr, "Image data cannot be null");
 
-	mLoadQueue.Push(AxQueueItem::DirectUploadImage(ticket, img_info));
+	mLoadQueue.Push(AssetQueueItem::DirectUploadImage(ticket, img_info));
 	SignalUpdate();
 
 	return ticket;
@@ -430,7 +430,7 @@ AssetTicket AssetManager::GetNullImageTicket(eImageFormat format)
 /////////////////////////////////////
 
 
-static void DoDirectUpload(AxQueueItem& item, AssetItemData& asset_data)
+static void DoDirectUpload(AssetQueueItem& item, AssetItemData& asset_data)
 {
 	ImageInfo& img_info = item.ImgInfo;
 
@@ -483,13 +483,6 @@ static void ProcessLoadSuccess(LockContext<AssetItemData>& asset_data)
 	}
 }
 
-void AssetManager::ReleaseTextureTransfer(AssetTicket& ticket)
-{
-	using namespace renderer;
-
-	Image* texture = static_cast<Image*>(ticket.Get());
-	texture->TransferHandoff();
-}
 
 int32 AssetManager::CheckForUploadableData()
 {
@@ -534,8 +527,10 @@ int32 AssetManager::CheckForUploadableData()
 			else if (asset_data->pLoader.IsValid()) {
 				asset_data->CreateGpuResource();
 
+
 				if (asset_data->LoadType == eAssetType::Image) {
-					ReleaseTextureTransfer(asset_data->Ticket);
+					Image* texture = static_cast<Image*>(asset_data->Ticket.Get());
+					texture->TransferHandoff();
 				}
 
 				++num_uploads;
@@ -635,7 +630,7 @@ int32 AssetManager::CheckForItemsToLoad()
 		return num_loads;
 	}
 
-	AxQueueItem item;
+	AssetQueueItem item;
 	if (!mLoadQueue.PopIfAvailable(&item)) {
 		// The load queue is currently in use(uploaded to), skip for now.
 		return num_loads;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Asset/AxQueue.hpp"
-#include "Asset/AxQueueItem.hpp"
+#include "Asset/AssetQueue.hpp"
+#include "Asset/AssetQueueItem.hpp"
 #include "AssetBase.hpp"
 #include "AssetDef.hpp"
 #include "AssetTicket.hpp"
@@ -72,7 +72,7 @@ public:
 
 	void Create();
 
-	void SubmitItemToLoad(AxQueueItem&& item)
+	void SubmitItemToLoad(AssetQueueItem&& item)
 	{
 		Item = std::move(item);
 		ItemReady.Signal();
@@ -100,7 +100,7 @@ private:
 
 
 public:
-	AxQueueItem Item;
+	AssetQueueItem Item;
 	loader::eLoaderStatus LoadStatus = loader::eLoaderStatus::None;
 
 	DataNotifier ItemReady;
@@ -246,11 +246,6 @@ private:
 	AssetTicket NewTextureTicket();
 
 	/**
-	 * @brief Releases a texture from the transfer queue to be used in the main graphics queue.
-	 */
-	void ReleaseTextureTransfer(AssetTicket& ticket_data);
-
-	/**
 	 * @brief When there is excess free time in asset management, we can tyr and load higher detailed materials/models
 	 * for objects that are already loaded.
 	 */
@@ -262,7 +257,7 @@ private:
 	{
 		AssetManager* mgr = GetInstance();
 
-		mgr->mLoadQueue.Push(AxQueueItem::UploadFileToProcess(ticket, loader, path, asset_type));
+		mgr->mLoadQueue.Push(AssetQueueItem::UploadFileToProcess(ticket, loader, path, asset_type));
 		mgr->SignalUpdate();
 	}
 
@@ -283,7 +278,7 @@ private:
 	{
 		AssetManager* mgr = GetInstance();
 
-		mgr->mLoadQueue.Push(AxQueueItem::UploadAndProcess(ticket, loader, asset_type, asset_data));
+		mgr->mLoadQueue.Push(AssetQueueItem::UploadAndProcess(ticket, loader, asset_type, asset_data));
 		mgr->SignalUpdate();
 	}
 
@@ -294,7 +289,7 @@ public:
 
 	//    DataNotifier DataLoaded;
 private:
-	AxQueue mLoadQueue;
+	AssetQueue mLoadQueue;
 	TSQueue<AssetDeletionTicket> mDeletionTickets;
 
 	SizedArray<AssetWorker*> WorkersWaitingToUpload;

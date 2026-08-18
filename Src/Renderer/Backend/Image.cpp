@@ -258,10 +258,16 @@ void Image::CreateFromData(renderer::CommandBuffer& cmd, const ImageInfo& info, 
 	Info.MipLevel = info.MipLevel;
 }
 
-void Image::RenderQueueAcquire() const { using namespace renderer; }
+void Image::GraphicsAcquire(const CommandBuffer& cmd) { BarrierHelper::ImageGraphicsAcquire(cmd, this); }
+void Image::TransferHandoff(const CommandBuffer& cmd)
+{
+	if (mbIsHandoffTriggered) {
+		return;
+	}
 
-void Image::TransferHandoff() const { renderer::BarrierHelper::ImageTransferHandoff(this); }
-
+	mbIsHandoffTriggered = true;
+	renderer::BarrierHelper::ImageTransferHandoff(cmd, this);
+}
 
 void Image::Upload(renderer::CommandBuffer& cmd, const ImageInfo& info)
 {
@@ -315,8 +321,10 @@ void Image::Upload(renderer::CommandBuffer& cmd, const ImageInfo& info)
 	vkCmdCopyBufferToImage(cmd, staging_buffer.Buffer, InternalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 						   buffer_copy_infos.Size, buffer_copy_infos.pData);
 
+	TransferHandoff(cmd);
+
 	// Transition to shader r/o
-	BarrierHelper::ImageLayoutTransition(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd, 0, info.MipCount);
+	// BarrierHelper::ImageLayoutTransition(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd, 0, info.MipCount);
 }
 
 
@@ -356,7 +364,9 @@ void Image::CopyFromBuffer(renderer::CommandBuffer& cmd, const renderer::RawGpuB
 
 	vkCmdCopyBufferToImage(cmd, buffer.Buffer, InternalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-	BarrierHelper::ImageLayoutTransition(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd, mip_level, num_mips);
+	TransferHandoff(cmd);
+
+	// BarrierHelper::ImageLayoutTransition(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd, mip_level, num_mips);
 }
 
 

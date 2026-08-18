@@ -3,6 +3,7 @@
 #include <Core/Assert.hpp>
 #include <Core/DataNotifier.hpp>
 #include <Core/Defines.hpp>
+#include <Core/Types.hpp>
 #include <atomic>
 #include <functional>
 
@@ -20,59 +21,18 @@ public:
 	using OnErrorFunc = std::function<void()>;
 
 public:
-	AssetTicketData() = default;
+	AssetTicketData();
 	AssetTicketData(const AssetTicketData&) = delete;
 
 	AssetTicketData& operator=(const AssetTicketData&) = delete;
 
-	void MarkAndSignalLoaded()
-	{
-		if (bIsLoaded.load()) {
-			return;
-		}
+	void MarkAndSignalLoaded();
 
-		IsFinishedNotifier.Signal();
+	void SignalFinished();
+	void SignalUploadedToGpu();
 
-		bIsUploadedToGpu = true;
-		bIsUploadedToGpu.notify_all();
-
-		bIsLoaded.store(true);
-	}
-
-	void SignalFinished() { IsFinishedNotifier.Signal(); }
-
-	void SignalUploadedToGpu()
-	{
-		bIsUploadedToGpu = true;
-		bIsUploadedToGpu.notify_all();
-	}
-
-	void OnLoaded(void* item, const OnLoadFunc& on_loaded_callback)
-	{
-		std::lock_guard guard(mCallbackMutex);
-
-		// If the asset has already been loaded, call the callback immediately.
-		if (IsFinishedNotifier.IsSignalled()) {
-			on_loaded_callback(item);
-			return;
-		}
-
-		mOnLoadedCallbacks.push_back(on_loaded_callback);
-	}
-
-
-	void OnError(const OnErrorFunc& on_error_callback)
-	{
-		std::lock_guard guard(mCallbackMutex);
-
-		// If the asset has already been loaded, call the callback immediately.
-		if (IsFinishedNotifier.IsSignalled()) {
-			on_error_callback();
-			return;
-		}
-
-		mOnErrorCallback = on_error_callback;
-	}
+	void OnLoaded(void* item, const OnLoadFunc& on_loaded_callback);
+	void OnError(const OnErrorFunc& on_error_callback);
 
 
 	~AssetTicketData() = default;
@@ -82,6 +42,8 @@ public:
 	std::atomic_bool bIsUploadedToGpu = { false };
 	std::atomic_bool bIsLoaded = { false };
 	std::atomic_int UsageCount = 1;
+
+	uint64 ID = 0;
 
 	// Callback members
 	std::mutex mCallbackMutex;

@@ -3,6 +3,7 @@
 #include "Material.hpp"
 
 #include <Asset/AssetManager.hpp>
+#include <Renderer/Backend/BarrierHelper.hpp>
 #include <Renderer/Backend/DescriptorCache.hpp>
 #include <Renderer/Backend/Descriptors.hpp>
 #include <Renderer/Backend/Pipeline.hpp>
@@ -104,6 +105,9 @@ void MaterialManager::MakeNullMaterial()
 			ImageInfo image_info { Vec2u(4, 4), eImageFormat::RGBA8_UNorm, 0, 1,
 								   Slice<const uint8>(diffuse_data.pData, diffuse_data.Size) };
 			diffuse_image->CreateFromData(cmd, image_info, eImageCreateFlags::None);
+			renderer::BarrierHelper::ImageLayoutTransition(diffuse_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, cmd,
+														   0, 1);
+
 			diffuse_ticket.MarkAndSignalLoaded();
 		});
 

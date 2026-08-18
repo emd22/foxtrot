@@ -25,6 +25,12 @@
 },
 {
   "directory": "/Users/emd22/Projects/a2",
+  "command": "/usr/bin/c++ -DDEBUG -DFX_BASE_DIR=\\\".\\\" -DVK_ENABLE_BETA_EXTENSIONS=1 -I/Users/emd22/Projects/a2/Src -I/Users/emd22/Projects/a2/Src/ThirdParty -I/Users/emd22/Projects/a2/Lib/Include -isystem /Users/emd22/VulkanSDK/1.4.357.0/macOS/include -g -std=gnu++20 -arch arm64 -Wno-nullability-completeness -Wcast-align -Wpessimizing-move -Wredundant-move -Wshadow -fsanitize=address -fcolor-diagnostics -o CMakeFiles/foxtrot.dir/Src/Asset/AssetTicket.cpp.o -c /Users/emd22/Projects/a2/Src/Asset/AssetTicket.cpp",
+  "file": "/Users/emd22/Projects/a2/Src/Asset/AssetTicket.cpp",
+  "output": "/Users/emd22/Projects/a2/CMakeFiles/foxtrot.dir/Src/Asset/AssetTicket.cpp.o"
+},
+{
+  "directory": "/Users/emd22/Projects/a2",
   "command": "/usr/bin/c++ -DDEBUG -DFX_BASE_DIR=\\\".\\\" -DVK_ENABLE_BETA_EXTENSIONS=1 -I/Users/emd22/Projects/a2/Src -I/Users/emd22/Projects/a2/Src/ThirdParty -I/Users/emd22/Projects/a2/Lib/Include -isystem /Users/emd22/VulkanSDK/1.4.357.0/macOS/include -g -std=gnu++20 -arch arm64 -Wno-nullability-completeness -Wcast-align -Wpessimizing-move -Wredundant-move -Wshadow -fsanitize=address -fcolor-diagnostics -o CMakeFiles/foxtrot.dir/Src/Asset/AxPaths.cpp.o -c /Users/emd22/Projects/a2/Src/Asset/AxPaths.cpp",
   "file": "/Users/emd22/Projects/a2/Src/Asset/AxPaths.cpp",
   "output": "/Users/emd22/Projects/a2/CMakeFiles/foxtrot.dir/Src/Asset/AxPaths.cpp.o"
@@ -199,9 +205,9 @@
 },
 {
   "directory": "/Users/emd22/Projects/a2",
-  "command": "/usr/bin/c++ -DDEBUG -DFX_BASE_DIR=\\\".\\\" -DVK_ENABLE_BETA_EXTENSIONS=1 -I/Users/emd22/Projects/a2/Src -I/Users/emd22/Projects/a2/Src/ThirdParty -I/Users/emd22/Projects/a2/Lib/Include -isystem /Users/emd22/VulkanSDK/1.4.357.0/macOS/include -g -std=gnu++20 -arch arm64 -Wno-nullability-completeness -Wcast-align -Wpessimizing-move -Wredundant-move -Wshadow -fsanitize=address -fcolor-diagnostics -o CMakeFiles/foxtrot.dir/Src/Core/Thread/FxThread_Posix.cpp.o -c /Users/emd22/Projects/a2/Src/Core/Thread/FxThread_Posix.cpp",
-  "file": "/Users/emd22/Projects/a2/Src/Core/Thread/FxThread_Posix.cpp",
-  "output": "/Users/emd22/Projects/a2/CMakeFiles/foxtrot.dir/Src/Core/Thread/FxThread_Posix.cpp.o"
+  "command": "/usr/bin/c++ -DDEBUG -DFX_BASE_DIR=\\\".\\\" -DVK_ENABLE_BETA_EXTENSIONS=1 -I/Users/emd22/Projects/a2/Src -I/Users/emd22/Projects/a2/Src/ThirdParty -I/Users/emd22/Projects/a2/Lib/Include -isystem /Users/emd22/VulkanSDK/1.4.357.0/macOS/include -g -std=gnu++20 -arch arm64 -Wno-nullability-completeness -Wcast-align -Wpessimizing-move -Wredundant-move -Wshadow -fsanitize=address -fcolor-diagnostics -o CMakeFiles/foxtrot.dir/Src/Core/Thread.cpp.o -c /Users/emd22/Projects/a2/Src/Core/Thread.cpp",
+  "file": "/Users/emd22/Projects/a2/Src/Core/Thread.cpp",
+  "output": "/Users/emd22/Projects/a2/CMakeFiles/foxtrot.dir/Src/Core/Thread.cpp.o"
 },
 {
   "directory": "/Users/emd22/Projects/a2",

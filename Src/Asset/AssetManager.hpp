@@ -119,6 +119,12 @@ struct LoadObjectOptions
 	bool bGeneratePhysicsMesh : 1 = false;
 };
 
+struct RenderHandoffAssetItem
+{
+	eAssetType Type = eAssetType::None;
+	AssetTicket Ticket;
+};
+
 class AssetManager
 {
 public:
@@ -230,6 +236,7 @@ public:
 
 	~AssetManager() { Shutdown(); }
 
+	void SubmitGraphicsAcquireRequest(const eAssetType at, const AssetTicket& ticket);
 
 private:
 	AssetWorker* FindWorkerThread();
@@ -244,6 +251,7 @@ private:
 	void AssetManagerUpdate();
 
 	AssetTicket NewTextureTicket();
+
 
 	/**
 	 * @brief When there is excess free time in asset management, we can tyr and load higher detailed materials/models
@@ -286,8 +294,11 @@ private:
 public:
 	String ScenePath = "";
 
+	/**
+	 * @brief Assets that are awaiting handoff to the render queue
+	 */
+	TSQueue<RenderHandoffAssetItem> RenderHandoffQueue;
 
-	//    DataNotifier DataLoaded;
 private:
 	AssetQueue mLoadQueue;
 	TSQueue<AssetDeletionTicket> mDeletionTickets;

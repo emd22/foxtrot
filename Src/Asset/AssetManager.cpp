@@ -151,7 +151,6 @@ void AssetManager::Start(int32 min_threads)
 	mMinThreads = min_threads;
 	mbActive.test_and_set();
 
-
 	// Allocate the workers
 	mWorkerThreads.InitCapacity(scMaxWorkerThreads);
 
@@ -162,6 +161,7 @@ void AssetManager::Start(int32 min_threads)
 		// Create the worker from the newly inserted pointer
 		worker->Create();
 	}
+
 
 	WorkersWaitingToUpload.InitSize(scMaxWorkerThreads);
 
@@ -411,6 +411,7 @@ fx::Image* AssetManager::GetNullImage(eImageFormat format)
 			image->Upload(cmd, image_info);
 		});
 
+
 	return image;
 }
 
@@ -419,7 +420,7 @@ AssetTicket AssetManager::GetNullImageTicket(eImageFormat format)
 	fx::Image* image = GetNullImage(format);
 
 	AssetTicket ticket { image };
-	ticket.MarkAndSignalLoaded();
+	SubmitGraphicsAcquireRequest(eAssetType::Image, ticket);
 
 	return ticket;
 }
@@ -438,11 +439,9 @@ static void DoDirectUpload(AssetQueueItem& item, AssetItemData& asset_data)
 	Image* image = static_cast<Image*>(ticket.Get());
 
 	image->Upload(renderer::RenderBackendFwd::GetUploadCmd(), img_info);
-
-	ticket.SignalUploadedToGpu();
 }
 
-static void ProcessLoadSuccess(LockContext<AssetItemData>& asset_data)
+static void ProcessLoadSuccess(AssetManager* am, LockContext<AssetItemData>& asset_data)
 {
 	AssetTicketData* ticket_data = asset_data->Ticket.pTicketData;
 
@@ -470,9 +469,19 @@ static void ProcessLoadSuccess(LockContext<AssetItemData>& asset_data)
 		ticket_data->bIsLoaded.store(true);
 	} break;
 	case eAssetType::Image: {
+		// Images still need to be handed off to the render queue. Add to RenderHandoffQueue first, and then notify
+		// finished once it is processed.
+
+		SpinLockContext<Queue<RenderHandoffAssetItem>> rq = am->RenderHandoffQueue.GetQueue();
+
+		RenderHandoffAssetItem item { .Type = eAssetType::Image, .Ticket = asset_data->Ticket };
+		rq->Push(std::move(item));
+
+		am->SubmitGraphicsAcquireRequest(asset_data->LoadType, asset_data->Ticket);
+
 		// Notify the asset thread that loading is finished
-		asset_data->Ticket.SignalUploadedToGpu();
-		ticket_data->bIsLoaded.store(true);
+		// asset_data->Ticket.SignalUploadedToGpu();
+		// ticket_data->bIsLoaded.store(true);
 	} break;
 	default:;
 	}
@@ -483,6 +492,16 @@ static void ProcessLoadSuccess(LockContext<AssetItemData>& asset_data)
 	}
 }
 
+
+void AssetManager::SubmitGraphicsAcquireRequest(const eAssetType at, const AssetTicket& ticket)
+{
+	SpinLockContext<Queue<RenderHandoffAssetItem>> rq = RenderHandoffQueue.GetQueue();
+
+	Assert(rq->IsInited());
+
+	RenderHandoffAssetItem item { .Type = at, .Ticket = ticket };
+	rq->Push(std::move(item));
+}
 
 int32 AssetManager::CheckForUploadableData()
 {
@@ -512,6 +531,7 @@ int32 AssetManager::CheckForUploadableData()
 		gRenderer->TransferContext.UploadFence.WaitFor();
 		gRenderer->TransferContext.UploadFence.Reset();
 
+		gRenderer->TransferContext.CmdBuffer.Reset();
 		gRenderer->TransferContext.CmdBuffer.Record();
 	}
 
@@ -527,10 +547,8 @@ int32 AssetManager::CheckForUploadableData()
 			else if (asset_data->pLoader.IsValid()) {
 				asset_data->CreateGpuResource();
 
-
 				if (asset_data->LoadType == eAssetType::Image) {
 					Image* texture = static_cast<Image*>(asset_data->Ticket.Get());
-					texture->TransferHandoff();
 				}
 
 				++num_uploads;
@@ -544,17 +562,36 @@ int32 AssetManager::CheckForUploadableData()
 		CommandBuffer& cmd = gRenderer->TransferContext.CmdBuffer;
 		cmd.End();
 
-		const VkSubmitInfo submit_info = {
+		uint64_t tl_value = gRenderer->TransferCount.load() + 1;
+
+		VkTimelineSemaphoreSubmitInfo timeline_info {
+			.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreValueCount = 0,
+			.pWaitSemaphoreValues = nullptr,
+			.signalSemaphoreValueCount = 1,
+			.pSignalSemaphoreValues = &tl_value,
+		};
+
+
+		const VkSubmitInfo submit_info {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 
-			.commandBufferCount = 1,
+			.pNext = &timeline_info,
+
+			.commandBufferCount = 1U,
 			.pCommandBuffers = &cmd.Cmd,
+
+			.signalSemaphoreCount = 1U,
+			.pSignalSemaphores = &gRenderer->TransferSync.InternalSemaphore,
 		};
 
 		VkQueue vk_xfer_queue = transfer_queue.Get();
 
 		AssertMsg(vk_xfer_queue != nullptr, "Queue has not been initialized");
 		vkQueueSubmit(vk_xfer_queue, 1, &submit_info, gRenderer->TransferContext.UploadFence.Get());
+
+		gRenderer->TransferCount.store(tl_value);
 	}
 
 	transfer_queue.Unlock();
@@ -565,7 +602,7 @@ int32 AssetManager::CheckForUploadableData()
 		LockContext<AssetItemData> asset_data = worker->Item.GetDataContext();
 
 		if (worker->LoadStatus == loader::eLoaderStatus::Success) {
-			ProcessLoadSuccess(asset_data);
+			ProcessLoadSuccess(this, asset_data);
 		}
 		else if (worker->LoadStatus == loader::eLoaderStatus::Error) {
 			asset_data->Ticket.SignalFinished();

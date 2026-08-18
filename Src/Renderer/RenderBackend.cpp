@@ -112,6 +112,8 @@ void RenderBackend::Init(Vec2u window_size)
 	InitFrames();
 	InitUploadContext();
 
+	TransferSync.Create(eSemaphoreType::Timeline);
+
 	SpinLockContext<Queue<DeletionObject>> deletion_queue = mDeletionQueue.GetQueue();
 	deletion_queue->InitCapacity(Limits::MaxDeletionQueueItems);
 
@@ -119,15 +121,16 @@ void RenderBackend::Init(Vec2u window_size)
 	// per Swapchain image, not frame in flight.
 	mSubmitSemaphores.InitSize(Swapchain.OutputImages.Size);
 	for (Semaphore& sem : mSubmitSemaphores) {
-		sem.Create();
+		sem.Create(eSemaphoreType::Binary);
 	}
 
 	LightBuffer.Create(scLightUniformSize, Limits::MaxActiveLights);
 	BoneBuffer.Create(Limits::MaxBones * sizeof(Mat4f), 1);
 
+	gAssetManager->RenderHandoffQueue.GetQueue()->InitCapacity(512);
+
 	gMaterialManager->Create();
 	gObjectManager->Create();
-
 
 	Mat4f initial_matrix = Mat4f::sIdentity;
 	BoneBuffer.SetAllValues(initial_matrix.RawData, true);
@@ -235,7 +238,7 @@ void RenderBackend::InitVulkan()
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	app_info.pApplicationName = app_name;
 	app_info.pEngineName = app_name;
-	app_info.apiVersion = VK_MAKE_VERSION(1, 3, 261);
+	app_info.apiVersion = VK_MAKE_VERSION(1, 4, 357);
 
 	ExtensionNames requested_extensions = {
 		// VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
@@ -314,9 +317,9 @@ static uint32 DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messag
 	const char* message = callback_data->pMessage;
 	const char* fmt = "VkValidator: {:s}";
 
-	String s_msg(message);
+	// String s_msg(message);
 
-	// if (s_msg.Contains("being bound is not compatible with the corresponding VkPipelineLayout")) {
+	// if (s_msg.Contains("VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL--instead")) {
 	// 	FX_BREAKPOINT;
 	// }
 
@@ -482,7 +485,7 @@ void RenderBackend::SubmitImmediateUploadCmd(RenderBackend::SubmitFunc upload_fu
 	TransferContext.ImmediateUploadFence.WaitFor();
 	TransferContext.ImmediateUploadFence.Reset();
 
-	TransferContext.CmdPool.Reset();
+	TransferContext.ImmediateCmdBuffer.Reset();
 }
 
 void RenderBackend::SubmitUploadCmd(RenderBackend::SubmitFunc upload_func)
@@ -493,7 +496,7 @@ void RenderBackend::SubmitUploadCmd(RenderBackend::SubmitFunc upload_func)
 
 void RenderBackend::BeginUploads() {}
 
-void RenderBackend::SubmitUploads() {}
+void RenderBackend::MarkUploadsFinished() {}
 
 
 void RenderBackend::SubmitOneTimeCmd(RenderBackend::SubmitFunc submit_func)
@@ -553,29 +556,68 @@ void RenderBackend::BeginGeometry()
 
 void RenderBackend::PresentFrame()
 {
-	SubmitUploads();
-
+	MarkUploadsFinished();
 	FrameData* frame = GetFrame();
+
+	SpinLockContext<Queue<RenderHandoffAssetItem>> assets_to_handoff = gAssetManager->RenderHandoffQueue.GetQueue();
+
+	for (RenderHandoffAssetItem& item : assets_to_handoff.Get()) {
+		if (item.Ticket.IsInvalid()) {
+			LogError("Handoff image is null");
+			continue;
+		}
+
+		switch (item.Type) {
+		case fx::eAssetType::Image: {
+			Image* image = static_cast<Image*>(item.Ticket.Get());
+			image->GraphicsAcquire(frame->CmdBuffer);
+
+			break;
+		}
+
+		default:;
+		}
+	}
+
+	frame->CmdBuffer.End();
 
 	const VkPipelineStageFlags wait_stages[] = {
 		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 	};
 
 	VkSemaphore submit_semaphore = mSubmitSemaphores[mImageIndex].Get();
 
-	VkSemaphore wait_semaphore = frame->ImageAvailable.Get();
-
+	VkSemaphore wait_semaphores[] = {
+		frame->ImageAvailable.Get(),
+		TransferSync.Get(),
+	};
 
 	VkCommandBuffer cmds_to_submit[] = {
 		frame->CmdBuffer.Cmd,
 		// frame->TransferCmdBuffer.Cmd,
 	};
 
+
+	uint64_t wait_values[] = { 0, gRenderer->TransferCount.load() };
+
+	VkTimelineSemaphoreSubmitInfo timeline_info {
+		.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreValueCount = std::size(wait_values),
+		.pWaitSemaphoreValues = wait_values,
+		.signalSemaphoreValueCount = 0,
+		.pSignalSemaphoreValues = nullptr,
+	};
+
+
 	const VkSubmitInfo submit_info = {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.pNext = &timeline_info,
 
-		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &wait_semaphore,
+		.waitSemaphoreCount = std::size(wait_semaphores),
+		.pWaitSemaphores = wait_semaphores,
+
 		.pWaitDstStageMask = wait_stages,
 
 		.commandBufferCount = std::size(cmds_to_submit),
@@ -583,6 +625,7 @@ void RenderBackend::PresentFrame()
 
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &submit_semaphore,
+
 	};
 
 	{
@@ -591,6 +634,16 @@ void RenderBackend::PresentFrame()
 		VkTry(vkQueueSubmit(graphics_queue.Get(), 1, &submit_info, frame->InFlight.Get()),
 			  "Error submitting draw buffer");
 	}
+
+	while (!assets_to_handoff->IsEmpty()) {
+		RenderHandoffAssetItem item = assets_to_handoff->PopValue();
+
+		item.Ticket.SignalUploadedToGpu();
+		item.Ticket.pTicketData->bIsLoaded.store(true);
+	}
+
+	// Unlock the queue to prevent the asset manager waiting for the present+sync+blank time
+	assets_to_handoff.Unlock();
 
 
 	SpinLockContext<VkQueue> present_queue = GetDevice()->GetPresentQueue();
@@ -691,8 +744,6 @@ void RenderBackend::DoComposition(Camera& render_cam)
 	pDeferredRenderer->CompPass.Begin(frame->CmdBuffer);
 	pDeferredRenderer->DoCompPass(render_cam);
 	pDeferredRenderer->CompPass.End();
-
-	frame->CmdBuffer.End();
 
 	PresentFrame();
 

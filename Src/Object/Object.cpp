@@ -49,7 +49,7 @@ bool Object::CheckIfReady(bool require_material)
 	}
 
 	// Check material is ready
-	if (!material->bReadyToCheck.test()) {
+	if (!material->bReadyToCheck.test() || !material->IsReady()) {
 		return false;
 	}
 
@@ -284,10 +284,17 @@ void Object::RenderMesh(renderer::Pipeline* pipeline)
 		Assert(mat->GetRequiredPipeline() == pipeline->Name);
 	}
 
-	// If there was an error binding the object material, bind the null material.
-	if (!gMaterialManager->BindWithPipeline(cmd, *pipeline, mMaterialID)) {
-		gMaterialManager->BindWithPipeline(cmd, *pipeline, MaterialID::Null);
+	bool is_material_bound = gMaterialManager->BindWithPipeline(cmd, *pipeline, mMaterialID);
+	if (!is_material_bound) {
+		is_material_bound = gMaterialManager->BindWithPipeline(cmd, *pipeline, MaterialID::Null);
 	}
+
+	// If there was a further issue binding the null material (e.g. it hasn't been transferred to the main graphics
+	// queue yet) then quit early until that is resolved.
+	if (!is_material_bound) {
+		return;
+	}
+
 
 	const uint32 buffer_offsets[] = { gObjectManager->GetBaseOffset(), 0 };
 

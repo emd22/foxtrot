@@ -277,9 +277,9 @@ public:
 	/**
 	 * @brief Acquire the texutre in the render queue, after handoff from the transfer queue.
 	 */
-	void RenderQueueAcquire() const;
+	void GraphicsAcquire(const renderer::CommandBuffer& cmd);
 
-	void TransferHandoff() const;
+	void TransferHandoff(const renderer::CommandBuffer& cmd);
 
 
 	void CopyFromBuffer(renderer::CommandBuffer& cmd, const renderer::RawGpuBuffer& buffer, VkImageLayout final_layout,
@@ -313,6 +313,7 @@ public:
 	TextureID ID = TextureID::Null;
 
 private:
+	bool mbIsHandoffTriggered = false;
 	RefCount* mpRefCnt = nullptr;
 };
 

@@ -20,7 +20,7 @@ namespace BarrierHelper {
 // Helpers
 /////////////////////////////////////
 
-#define HANDOFF_REQUIRED_CHECK(queue_families_)                                                                        \
+#define REQUIRE_INDEPENDENT_QUEUES(queue_families_)                                                                    \
 	if (!queue_families_.HasIndependentTransfer()) {                                                                   \
 		return;                                                                                                        \
 	}
@@ -40,8 +40,8 @@ static VkImageSubresourceRange SubresourceRange(const Image* image)
 
 struct LayoutTransitionInfo
 {
-	VkAccessFlags AccessMask = VK_ACCESS_NONE;
-	VkPipelineStageFlags StageMask = VK_PIPELINE_STAGE_NONE;
+	VkAccessFlags2 AccessMask = VK_ACCESS_2_NONE;
+	VkPipelineStageFlags2 StageMask = VK_PIPELINE_STAGE_2_NONE;
 };
 
 
@@ -49,24 +49,24 @@ static const LayoutTransitionInfo GetLayoutTransitionInfo(VkImageLayout layout)
 {
 	switch (layout) {
 	case VK_IMAGE_LAYOUT_UNDEFINED:
-		return { 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
+		return { 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT };
 
 	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		return { VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+		return { VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT };
 
 	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		return { VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+		return { VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT };
 
 		/////////////////////////////////////
 		// Input Attachments
 		/////////////////////////////////////
 
 	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		return { VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
+		return { VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT };
 
 	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-		return { VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-				 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT };
+		return { VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+				 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT };
 
 
 		/////////////////////////////////////
@@ -74,14 +74,14 @@ static const LayoutTransitionInfo GetLayoutTransitionInfo(VkImageLayout layout)
 		/////////////////////////////////////
 
 	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		return { VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		return { VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-		return { VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-				 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT };
+		return { VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				 VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT };
 
 	case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-		return { 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
+		return { 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT };
 
 	default:;
 		LogError("Unknown image layout!");
@@ -96,11 +96,11 @@ static const LayoutTransitionInfo GetLayoutTransitionInfo(VkImageLayout layout)
 // Public functions
 /////////////////////////////////////
 
-void ImageTransferHandoff(const Image* image)
+void ImageTransferHandoff(const CommandBuffer& cmd, Image* image)
 {
 	const renderer::QueueFamilies& q_families = gRenderer->GetDevice()->mQueueFamilies;
 
-	HANDOFF_REQUIRED_CHECK(q_families);
+	REQUIRE_INDEPENDENT_QUEUES(q_families);
 
 	Assert(image != nullptr);
 
@@ -110,13 +110,13 @@ void ImageTransferHandoff(const Image* image)
 	VkImageMemoryBarrier2 transfer_barrier {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 		.pNext = nullptr,
-		/*  */
+
 		.srcStageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
 		.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-		/*  */
+
 		.dstStageMask = VK_PIPELINE_STAGE_2_NONE,
 		.dstAccessMask = VK_ACCESS_2_NONE,
-		/*  */
+
 		.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 
@@ -135,8 +135,55 @@ void ImageTransferHandoff(const Image* image)
 		.pImageMemoryBarriers = &transfer_barrier,
 	};
 
-	vkCmdPipelineBarrier2(gRenderer->TransferContext.CmdBuffer, &dep_info);
+	vkCmdPipelineBarrier2(cmd.Cmd, &dep_info);
+
+	image->ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
+
+void ImageGraphicsAcquire(const CommandBuffer& cmd, Image* image)
+{
+	const renderer::QueueFamilies& q_families = gRenderer->GetDevice()->mQueueFamilies;
+
+	REQUIRE_INDEPENDENT_QUEUES(q_families);
+
+	Assert(image != nullptr);
+
+	const uint32 transfer_queue_index = q_families.GetTransferFamily();
+	const uint32 graphics_queue_index = q_families.GetGraphicsFamily();
+
+	VkImageMemoryBarrier2 transfer_barrier {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+		.pNext = nullptr,
+		/*  */
+		.srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+		.srcAccessMask = VK_ACCESS_2_NONE,
+		/*  */
+		.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+		.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+		/*  */
+		.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+
+		.srcQueueFamilyIndex = transfer_queue_index,
+		.dstQueueFamilyIndex = graphics_queue_index,
+
+		.image = image->InternalImage,
+
+		.subresourceRange = SubresourceRange(image),
+	};
+
+	VkDependencyInfo dep_info {
+		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		.pNext = nullptr,
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &transfer_barrier,
+	};
+
+	vkCmdPipelineBarrier2(cmd.Cmd, &dep_info);
+
+	image->ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+}
+
 
 void ImageLayoutTransition(Image* image, VkImageLayout new_layout, CommandBuffer& cmd, uint32 mip_level,
 						   uint32 num_levels)
@@ -147,14 +194,18 @@ void ImageLayoutTransition(Image* image, VkImageLayout new_layout, CommandBuffer
 	LayoutTransitionInfo src_info = GetLayoutTransitionInfo(image->ImageLayout);
 	LayoutTransitionInfo dst_info = GetLayoutTransitionInfo(new_layout);
 
-	VkImageMemoryBarrier barrier {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+	VkImageMemoryBarrier2 barrier {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 		.pNext = nullptr,
 
+		.srcStageMask = src_info.StageMask,
 		.srcAccessMask = src_info.AccessMask,
+
+		.dstStageMask = dst_info.StageMask,
 		.dstAccessMask = dst_info.AccessMask,
 
-		.oldLayout = image->ImageLayout, .newLayout = new_layout,
+		.oldLayout = image->ImageLayout,
+		.newLayout = new_layout,
 
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -170,7 +221,14 @@ void ImageLayoutTransition(Image* image, VkImageLayout new_layout, CommandBuffer
 		},
 	};
 
-	vkCmdPipelineBarrier(cmd, src_info.StageMask, dst_info.StageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	VkDependencyInfo dep_info {
+		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		.pNext = nullptr,
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &barrier,
+	};
+
+	vkCmdPipelineBarrier2(cmd, &dep_info);
 
 	image->ImageLayout = new_layout;
 }

@@ -98,6 +98,7 @@ void FoxtrotGame::InitEngine()
 
 	gAssetManager->Start(3);
 
+
 	gWorldGrid->Create(Vec2u(10, 10));
 
 	sClockFreq = static_cast<double>(SDL_GetPerformanceFrequency());

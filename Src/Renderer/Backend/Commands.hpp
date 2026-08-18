@@ -8,65 +8,74 @@
 
 namespace fx::renderer {
 
+enum class eCommandState
+{
+	InProgress,
+	Ended,
+	Reset,
+};
+
 class CommandPool
 {
 public:
-    void Create(GpuDevice* device, uint32 queue_family);
+	void Create(GpuDevice* device, uint32 queue_family);
 
-    void Reset() { vkResetCommandPool(mpDevice->Device, CmdPool, 0); }
+	void Reset() { vkResetCommandPool(mpDevice->Device, CmdPool, 0); }
 
-    FX_FORCE_INLINE const VkCommandPool Get() const { return CmdPool; }
-    FX_FORCE_INLINE VkCommandPool Get() { return CmdPool; };
+	FX_FORCE_INLINE const VkCommandPool Get() const { return CmdPool; }
+	FX_FORCE_INLINE VkCommandPool Get() { return CmdPool; };
 
-    void Destroy()
-    {
-        if (!CmdPool) {
-            return;
-        }
+	void Destroy()
+	{
+		if (!CmdPool) {
+			return;
+		}
 
-        vkDestroyCommandPool(mpDevice->Device, CmdPool, nullptr);
-        CmdPool = nullptr;
-    }
+		vkDestroyCommandPool(mpDevice->Device, CmdPool, nullptr);
+		CmdPool = nullptr;
+	}
 
-    ~CommandPool() { Destroy(); }
+	~CommandPool() { Destroy(); }
 
 public:
-    VkCommandPool CmdPool = nullptr;
+	VkCommandPool CmdPool = nullptr;
 
-    uint32 QueueFamilyIndex = 0;
+	uint32 QueueFamilyIndex = 0;
 
 private:
-    GpuDevice* mpDevice = nullptr;
+	GpuDevice* mpDevice = nullptr;
 };
 
 class CommandBuffer
 {
 public:
-    void Create(CommandPool* pool);
-    void Destroy();
+	void Create(CommandPool* pool);
+	void Destroy();
 
-    void Record(VkCommandBufferUsageFlags usage_flags = 0);
+	void Record(VkCommandBufferUsageFlags usage_flags = 0);
 
-    void Reset();
-    void End();
+	void Reset();
+	void End();
 
-    FX_FORCE_INLINE const VkCommandBuffer Get() const { return Cmd; }
-    FX_FORCE_INLINE VkCommandBuffer Get() { return Cmd; }
+	FX_FORCE_INLINE const VkCommandBuffer Get() const { return Cmd; }
+	FX_FORCE_INLINE VkCommandBuffer Get() { return Cmd; }
 
-    operator VkCommandBuffer() const { return Cmd; }
+	operator VkCommandBuffer() const { return Cmd; }
 
-    bool IsInitialized() const { return mbInitialized; }
+	bool IsInitialized() const { return mbInitialized; }
 
 private:
-    void CheckInitialized() const;
+	void CheckInitialized() const;
 
 public:
-    VkCommandBuffer Cmd = nullptr;
+	VkCommandBuffer Cmd = nullptr;
 
 private:
-    bool mbInitialized = false;
-    CommandPool* mpCommandPool = nullptr;
-    GpuDevice* mpDevice = nullptr;
+	eCommandState State = eCommandState::Reset;
+
+	bool mbInitialized = false;
+	CommandPool* mpCommandPool = nullptr;
+	GpuDevice* mpDevice = nullptr;
 };
 
 } // namespace fx::renderer

@@ -10,22 +10,22 @@ namespace fx::renderer {
 
 struct alignas(16) UniformBufferObject
 {
-    Mat4f MvpMatrix;
+	Mat4f MvpMatrix;
 };
 
 struct FrameData
 {
 public:
-    void Create(GpuDevice* device);
-    void Destroy();
+	void Create(GpuDevice* device);
+	void Destroy();
 
 public:
-    CommandPool CmdPool;
-    CommandBuffer CmdBuffer;
+	CommandPool CmdPool;
+	CommandBuffer CmdBuffer;
 
-    Semaphore ImageAvailable;
-    Semaphore RenderFinished;
-    Fence InFlight;
+	Semaphore ImageAvailable;
+	Semaphore RenderFinished;
+	Fence InFlight;
 };
 
 } // namespace fx::renderer

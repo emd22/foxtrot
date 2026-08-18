@@ -108,7 +108,7 @@ public:
 
 
 	void BeginUploads();
-	void SubmitUploads();
+	void MarkUploadsFinished();
 
 	void SubmitUploadCmd(SubmitFunc func);
 	void SubmitImmediateUploadCmd(SubmitFunc func);
@@ -213,6 +213,9 @@ public:
 
 	Uniforms LightBuffer;
 	Uniforms BoneBuffer;
+
+	Semaphore TransferSync;
+	std::atomic_uint64_t TransferCount = 0;
 
 private:
 	VkInstance mInstance = nullptr;

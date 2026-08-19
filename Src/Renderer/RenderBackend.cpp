@@ -567,6 +567,8 @@ void RenderBackend::PresentFrame()
 			continue;
 		}
 
+		LogInfo("Trying to acquire item {}", item.Ticket.pTicketData->ID);
+
 		switch (item.Type) {
 		case fx::eAssetType::Image: {
 			Image* image = static_cast<Image*>(item.Ticket.Get());

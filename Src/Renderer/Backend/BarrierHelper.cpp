@@ -151,6 +151,8 @@ void ImageGraphicsAcquire(const CommandBuffer& cmd, Image* image)
 	const uint32 transfer_queue_index = q_families.GetTransferFamily();
 	const uint32 graphics_queue_index = q_families.GetGraphicsFamily();
 
+	LogInfo("Graphics acquire");
+
 	VkImageMemoryBarrier2 transfer_barrier {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 		.pNext = nullptr,

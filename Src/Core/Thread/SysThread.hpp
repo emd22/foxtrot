@@ -1,6 +1,9 @@
 #pragma once
 
+#include "ThreadID.hpp"
+
 #include <Core/Defines.hpp>
+#include <Core/String.hpp>
 #include <Core/Types.hpp>
 #include <functional>
 
@@ -31,14 +34,14 @@ public:
 	virtual void Join() = 0;
 	virtual void Detach() = 0;
 
-	virtual uint32 GetInternalThreadID() = 0;
+	virtual uint32 GetInternalThreadID() const = 0;
 
 	bool IsRunning() const { return bIsRunning; };
 
 
 public:
 	/// The created ID for the thread.
-	uint32 ID = 0;
+	ThreadID ID = 0;
 
 	ThreadFunc pEntryFunction = nullptr;
 	bool bIsRunning = false;
@@ -60,9 +63,9 @@ public:
 	virtual void Create(ThreadFunc func) override;
 	virtual void Join() override;
 	virtual void Detach() override;
+	virtual uint32 GetInternalThreadID() const override { return 0; }
 
 	pthread_t GetInternalThread() const { return InternalThread; }
-	uint32 GetInternalThreadID() const { return 0; }
 
 protected:
 	static void* InternalEntrypoint(void* InArg);
@@ -72,6 +75,7 @@ private:
 };
 
 using SysThreadImplType = SysThreadImpl_PThread;
+using SysThreadInternalType = pthread_t;
 
 #endif
 
@@ -94,7 +98,7 @@ public:
 	virtual void Detach() override;
 
 	HANDLE GetInternalThread() const { return InternalThread; }
-	virtual uint32 GetInternalThreadID() override { return InternalID; }
+	virtual uint32 GetInternalThreadID() const override { return InternalID; }
 
 protected:
 	static DWORD WINAPI InternalEntrypoint(LPVOID arg);
@@ -105,6 +109,7 @@ private:
 };
 
 using SysThreadImplType = SysThreadImpl_Windows;
+using SysThreadInternalType = HANDLE;
 
 #endif
 
@@ -121,7 +126,15 @@ public:
 	SysThread(SysThread&& other) = default;
 	SysThread& operator=(SysThread&& other) = default;
 
+	FX_FORCE_INLINE const String& GetName() const { return Name; }
+
+	static SysThreadInternalType GetCurrentTID();
+	static bool AreTIDsEqual(SysThreadInternalType a, SysThreadInternalType b);
+
 	~SysThread();
+
+public:
+	String Name;
 };
 
 

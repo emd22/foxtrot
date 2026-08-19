@@ -189,6 +189,24 @@ void SysThreadImpl_Windows::Detach()
 // Common SysThread functions
 /////////////////////////////////////
 
+SysThreadInternalType SysThread::GetCurrentTID()
+{
+#if defined(FX_THREADS_PTHREAD)
+	return pthread_self();
+#elif defined(FX_THREADS_WINDOWS)
+	return GetCurrentThread();
+#endif
+}
+
+bool SysThread::AreTIDsEqual(SysThreadInternalType a, SysThreadInternalType b)
+{
+#if defined(FX_THREADS_PTHREAD)
+	return pthread_equal(a, b) != 0;
+#elif defined(FX_THREADS_WINDOWS)
+	return CompareObjectHandles(a, b);
+#endif
+}
+
 SysThread::~SysThread()
 {
 	if (!IsRunning()) {

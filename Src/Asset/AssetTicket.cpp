@@ -1,10 +1,16 @@
 #include "AssetTicket.hpp"
 
+#include <Core/Thread/ThreadManager.hpp>
+
 namespace fx {
 
 static uint64 sCurrentTicketDataID = 0;
 
-AssetTicketData::AssetTicketData() { ID = (sCurrentTicketDataID++); }
+AssetTicketData::AssetTicketData()
+{
+	Assert(gThreadManager->IsMainThread() == true);
+	ID = (sCurrentTicketDataID++);
+}
 
 void AssetTicketData::MarkAndSignalLoaded()
 {

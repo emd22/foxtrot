@@ -7,6 +7,7 @@
 #include "Loader/Object/LoaderGltf.hpp"
 
 #include <Core/Defines.hpp>
+#include <Core/Thread/ThreadManager.hpp>
 #include <Core/Types.hpp>
 #include <Engine.hpp>
 #include <Material/MaterialManager.hpp>
@@ -61,9 +62,9 @@ bool AssetDeletionTicket::TryDelete(uint32 current_tick) const
 // Asset Worker
 ////////////////////////////////////
 
-void AssetWorker::Create()
+void AssetWorker::Create(int32 worker_index)
 {
-	Thread = std::thread([this]() { this->Update(); });
+	ThreadID = gThreadManager->NewThread(String::Fmt("AssetWorker_{}", worker_index), [this]() { this->Update(); });
 }
 
 void AssetWorker::LoadObject(LockContext<AssetItemData>& asset_data)
@@ -159,13 +160,11 @@ void AssetManager::Start(int32 min_threads)
 		AssetWorker* worker = mWorkerThreads.Insert();
 
 		// Create the worker from the newly inserted pointer
-		worker->Create();
+		worker->Create(i);
 	}
 
-
 	WorkersWaitingToUpload.InitSize(scMaxWorkerThreads);
-
-	mpAssetManagerThread = new std::thread([this]() { AssetManager::AssetManagerUpdate(); });
+	mAssetManagerTID = gThreadManager->NewThread("AssetManager", [this]() { AssetManager::AssetManagerUpdate(); });
 }
 
 void AssetManager::DebugPrintWorkers() const
@@ -183,15 +182,6 @@ void AssetManager::Shutdown()
 		return;
 	}
 
-	// Cleanup all permutations of empty images that were created.
-	// PagedArray<AxImage>& empty_images_list = AxImage::GetEmptyImagesArray();
-
-	// if (empty_images_list.IsInited()) {
-	//     for (TSRef<AxImage>& image_ref : empty_images_list) {
-	//         image_ref.DestroyRef();
-	//     }
-	// }
-
 	mNullImageList.clear();
 
 	mbActive.clear();
@@ -199,11 +189,10 @@ void AssetManager::Shutdown()
 
 	for (auto& worker : mWorkerThreads) {
 		worker.Kill();
-		worker.Thread.join();
+		gThreadManager->Join(worker.ThreadID);
 	}
 
-	mpAssetManagerThread->join();
-	delete mpAssetManagerThread;
+	gThreadManager->Join(mAssetManagerTID);
 
 	mWorkerThreads.Free();
 }
@@ -648,7 +637,7 @@ void AssetManager::AddWorkerThread()
 	}
 
 	AssetWorker* worker = mWorkerThreads.Insert();
-	worker->Create();
+	worker->Create(mWorkerThreads.Size);
 }
 
 int32 AssetManager::CheckForItemsToLoad()

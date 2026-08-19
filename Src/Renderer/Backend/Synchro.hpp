@@ -48,23 +48,11 @@ public:
 	FX_FORCE_INLINE VkSemaphore Get() { return InternalSemaphore; }
 	FX_FORCE_INLINE const VkSemaphore Get() const { return InternalSemaphore; }
 
-	void SetCacheId(uint32 id)
-	{
-		AssertMsg(mCacheId == UINT32_MAX, "Semaphore is already assigned to a cache slot!");
-		mCacheId = id;
-	}
-
-	FX_FORCE_INLINE uint32 GetCacheId() const { return mCacheId; }
-	void InvalidateCacheId() { mCacheId = UINT32_MAX; }
-
 	void Destroy();
 
 public:
 	VkSemaphore InternalSemaphore = nullptr;
 	eSemaphoreType Type = eSemaphoreType::Binary;
-
-private:
-	uint32 mCacheId = UINT32_MAX;
 };
 
 

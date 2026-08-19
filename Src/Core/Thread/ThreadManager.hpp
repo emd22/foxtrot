@@ -3,7 +3,7 @@
 #include "SysThread.hpp"
 #include "ThreadID.hpp"
 
-#include <Core/SizedArray.hpp>
+#include <Core/FreeArray.hpp>
 
 
 namespace fx {
@@ -14,11 +14,20 @@ class ThreadManager
 public:
 	ThreadManager();
 
+	ThreadID NewThread(const String& name, ThreadFunc thread_func);
+
+	void Join(ThreadID id);
+	void Detach(ThreadID id);
+
+	bool IsMainThread() const;
 
 	~ThreadManager();
 
 private:
-	SizedArray<SysThread> mThreads;
+	FreeArray<SysThread> mThreadCache;
+	std::mutex mMutex;
+
+	SysThreadInternalType mMainTID;
 };
 
 

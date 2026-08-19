@@ -64,6 +64,13 @@ class AssetTicket
 {
 public:
 	AssetTicket() = delete;
+
+	explicit AssetTicket(nullptr_t np)
+	{
+		mpData = nullptr;
+		pTicketData = nullptr;
+	}
+
 	explicit AssetTicket(void* data)
 	{
 		mpData = data;

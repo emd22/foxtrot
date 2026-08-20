@@ -561,13 +561,14 @@ void RenderBackend::PresentFrame()
 
 	SpinLockContext<Queue<RenderHandoffAssetItem>> assets_to_handoff = gAssetManager->RenderHandoffQueue.GetQueue();
 
+
 	for (RenderHandoffAssetItem& item : assets_to_handoff.Get()) {
+		LogInfo("Trying to acquire item {}", item.Ticket.pTicketData->ID);
 		if (item.Ticket.IsInvalid()) {
 			LogError("Handoff image is null");
 			continue;
 		}
 
-		LogInfo("Trying to acquire item {}", item.Ticket.pTicketData->ID);
 
 		switch (item.Type) {
 		case fx::eAssetType::Image: {
@@ -599,7 +600,6 @@ void RenderBackend::PresentFrame()
 		frame->CmdBuffer.Cmd,
 		// frame->TransferCmdBuffer.Cmd,
 	};
-
 
 	uint64_t wait_values[] = { 0, gRenderer->TransferCount.load() };
 
@@ -640,8 +640,9 @@ void RenderBackend::PresentFrame()
 	while (!assets_to_handoff->IsEmpty()) {
 		RenderHandoffAssetItem item = assets_to_handoff->PopValue();
 
-		item.Ticket.SignalUploadedToGpu();
-		item.Ticket.pTicketData->bIsLoaded.store(true);
+		LogInfo("POP ACQUIRE");
+		// item.Ticket.SignalUploadedToGpu();
+		// item.Ticket.pTicketData->bIsLoaded.store(true);
 	}
 
 	// Unlock the queue to prevent the asset manager waiting for the present+sync+blank time

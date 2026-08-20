@@ -185,6 +185,7 @@ bool Material::BindWithPipeline(const CommandBuffer& cmd, const Pipeline& pipeli
 		return false;
 	}
 
+
 	renderer::DescriptorSet* descriptor_set = mpDescriptorSet;
 	const renderer::PipelineNameInfo& pl_info = GetPipelineNameInfo(pipeline.Name);
 

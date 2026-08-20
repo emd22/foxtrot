@@ -409,7 +409,9 @@ AssetTicket AssetManager::GetNullImageTicket(eImageFormat format)
 	fx::Image* image = GetNullImage(format);
 
 	AssetTicket ticket { image };
-	SubmitGraphicsAcquireRequest(eAssetType::Image, ticket);
+	if (!image->bIsInAcquireQueue) {
+		SubmitGraphicsAcquireRequest(eAssetType::Image, ticket);
+	}
 
 	return ticket;
 }
@@ -428,15 +430,17 @@ static void DoDirectUpload(AssetQueueItem& item, AssetItemData& asset_data)
 	Image* image = static_cast<Image*>(ticket.Get());
 
 	image->Upload(renderer::RenderBackendFwd::GetUploadCmd(), img_info);
+	ticket.SignalUploadedToGpu();
 }
 
 static void ProcessLoadSuccess(AssetManager* am, LockContext<AssetItemData>& asset_data)
 {
 	AssetTicketData* ticket_data = asset_data->Ticket.pTicketData;
 
-	while (!ticket_data->bIsUploadedToGpu) {
-		ticket_data->bIsUploadedToGpu.wait(false);
-	}
+	Assert(ticket_data->bIsUploadedToGpu);
+	// while (!ticket_data->bIsUploadedToGpu) {
+	// 	ticket_data->bIsUploadedToGpu.wait(false);
+	// }
 
 	switch (asset_data->LoadType) {
 	case eAssetType::Object: {
@@ -461,16 +465,17 @@ static void ProcessLoadSuccess(AssetManager* am, LockContext<AssetItemData>& ass
 		// Images still need to be handed off to the render queue. Add to RenderHandoffQueue first, and then notify
 		// finished once it is processed.
 
-		SpinLockContext<Queue<RenderHandoffAssetItem>> rq = am->RenderHandoffQueue.GetQueue();
+		// {
+		// 	SpinLockContext<Queue<RenderHandoffAssetItem>> rq = am->RenderHandoffQueue.GetQueue();
 
-		RenderHandoffAssetItem item { .Type = eAssetType::Image, .Ticket = asset_data->Ticket };
-		rq->Push(std::move(item));
-
+		// 	RenderHandoffAssetItem item { .Type = eAssetType::Image, .Ticket = asset_data->Ticket };
+		// 	rq->Push(std::move(item));
+		// }
 		am->SubmitGraphicsAcquireRequest(asset_data->LoadType, asset_data->Ticket);
 
 		// Notify the asset thread that loading is finished
-		// asset_data->Ticket.SignalUploadedToGpu();
-		// ticket_data->bIsLoaded.store(true);
+		asset_data->Ticket.SignalUploadedToGpu();
+		ticket_data->bIsLoaded.store(true);
 	} break;
 	default:;
 	}
@@ -482,14 +487,24 @@ static void ProcessLoadSuccess(AssetManager* am, LockContext<AssetItemData>& ass
 }
 
 
-void AssetManager::SubmitGraphicsAcquireRequest(const eAssetType at, const AssetTicket& ticket)
+void AssetManager::SubmitGraphicsAcquireRequest(const eAssetType at, AssetTicket& ticket)
 {
 	SpinLockContext<Queue<RenderHandoffAssetItem>> rq = RenderHandoffQueue.GetQueue();
+	LogInfo("ADD ACQUIRE REQUEST");
 
 	Assert(rq->IsInited());
 
 	RenderHandoffAssetItem item { .Type = at, .Ticket = ticket };
 	rq->Push(std::move(item));
+
+	switch (at) {
+	case eAssetType::Image: {
+		Image* image = static_cast<Image*>(ticket.Get());
+		image->bIsInAcquireQueue = true;
+		break;
+	}
+	default:;
+	}
 }
 
 int32 AssetManager::CheckForUploadableData()

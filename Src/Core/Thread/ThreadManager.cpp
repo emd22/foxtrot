@@ -42,7 +42,9 @@ ThreadID ThreadManager::NewThread(const String& name, ThreadFunc thread_func)
 
 void ThreadManager::Join(ThreadID id)
 {
+	std::lock_guard<std::mutex> guard(mMutex);
 	SysThread* th = mThreadCache.GetItem(FROM_THREAD_ID(id));
+
 	if (th == nullptr) {
 		LogError("Could not find valid thread (ID={})", id);
 		return;
@@ -50,14 +52,13 @@ void ThreadManager::Join(ThreadID id)
 
 	th->Join();
 
-	{
-		std::lock_guard<std::mutex> guard(mMutex);
-		mThreadCache.FreeItem(FROM_THREAD_ID(id));
-	}
+	mThreadCache.FreeItem(FROM_THREAD_ID(id));
 }
 
 void ThreadManager::Detach(ThreadID id)
 {
+	std::lock_guard<std::mutex> guard(mMutex);
+
 	SysThread* th = mThreadCache.GetItem(FROM_THREAD_ID(id));
 	if (th == nullptr) {
 		LogError("Could not find valid thread (ID={})", id);
@@ -66,10 +67,7 @@ void ThreadManager::Detach(ThreadID id)
 
 	th->Detach();
 
-	{
-		std::lock_guard<std::mutex> guard(mMutex);
-		mThreadCache.FreeItem(FROM_THREAD_ID(id));
-	}
+	mThreadCache.FreeItem(FROM_THREAD_ID(id));
 }
 
 bool ThreadManager::IsMainThread() const { return SysThread::AreTIDsEqual(SysThread::GetCurrentTID(), mMainTID); }

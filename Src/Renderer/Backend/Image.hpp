@@ -312,6 +312,9 @@ public:
 
 	TextureID ID = TextureID::Null;
 
+	bool bDidTransferHandoff = false;
+	bool bIsInAcquireQueue = false;
+
 private:
 	bool mbIsHandoffTriggered = false;
 	RefCount* mpRefCnt = nullptr;

@@ -49,7 +49,36 @@ static Vec2u GetMipDimensions(const Vec2u& ml_zero_size, uint32 mip_level)
 
 Image::Image() { mpRefCnt = gEnginePool->Alloc<RefCount>(sizeof(RefCount)); }
 
-Image::Image(const Image& other) { (*this) = other; }
+Image::Image(const Image& other)
+{
+	// If this image is already established, then we should decrement the ref here.
+	if (mpRefCnt) {
+		DecRef();
+	}
+
+	Aspect = other.Aspect;
+
+	InternalImage = other.InternalImage;
+	View = other.View;
+
+	ImageLayout = other.ImageLayout;
+	Allocation = other.Allocation;
+
+	bIsInAcquireQueue = other.bIsInAcquireQueue;
+	bDidTransferHandoff = other.bDidTransferHandoff;
+
+	Info = other.Info;
+
+	// Set the new ref count
+	mpRefCnt = other.mpRefCnt;
+
+	if (!mpRefCnt) {
+		mpRefCnt = gEnginePool->Alloc<RefCount>(sizeof(RefCount));
+	}
+	else {
+		mpRefCnt->Inc();
+	}
+}
 
 Image::Image(Ref<Image>&& ref) { (*this) = std::move(ref); }
 
@@ -82,6 +111,9 @@ Image& Image::operator=(const Image& other)
 	ImageLayout = other.ImageLayout;
 	Allocation = other.Allocation;
 
+	bIsInAcquireQueue = other.bIsInAcquireQueue;
+	bDidTransferHandoff = other.bDidTransferHandoff;
+
 	Info = other.Info;
 
 	// Set the new ref count
@@ -101,6 +133,9 @@ void Image::Create(eImageType image_type, const Vec2u& size, uint16 mips_count, 
 				   VkImageTiling tiling, VkImageUsageFlags usage, eImageAspectFlag aspect)
 {
 	Assert(size.X > 0 && size.Y > 0);
+
+	bIsInAcquireQueue = false;
+	bDidTransferHandoff = false;
 
 	// Destroy image if it already has been created
 	if (InternalImage != nullptr && Allocation != nullptr) {
@@ -261,11 +296,11 @@ void Image::CreateFromData(renderer::CommandBuffer& cmd, const ImageInfo& info, 
 void Image::GraphicsAcquire(const CommandBuffer& cmd) { BarrierHelper::ImageGraphicsAcquire(cmd, this); }
 void Image::TransferHandoff(const CommandBuffer& cmd)
 {
-	if (mbIsHandoffTriggered) {
+	if (bDidTransferHandoff) {
 		return;
 	}
 
-	mbIsHandoffTriggered = true;
+	bDidTransferHandoff = true;
 	renderer::BarrierHelper::ImageTransferHandoff(cmd, this);
 }
 

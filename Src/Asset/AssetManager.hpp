@@ -237,7 +237,7 @@ public:
 
 	~AssetManager() { Shutdown(); }
 
-	void SubmitGraphicsAcquireRequest(const eAssetType at, const AssetTicket& ticket);
+	void SubmitGraphicsAcquireRequest(const eAssetType at, AssetTicket& ticket);
 
 private:
 	AssetWorker* FindWorkerThread();

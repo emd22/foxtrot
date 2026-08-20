@@ -116,6 +116,7 @@ public:
 	}
 
 	FX_FORCE_INLINE void* Get() { return mpData; }
+	FX_FORCE_INLINE const void* Get() const { return mpData; }
 
 	void WaitUntilLoaded()
 	{

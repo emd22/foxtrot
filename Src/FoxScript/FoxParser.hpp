@@ -5,6 +5,8 @@
 
 #include <Util/Tokenizer.hpp>
 
+#include <unordered_map>
+
 
 #define FX_SCRIPT_SCOPE_GLOBAL_VARS_START_SIZE 32
 #define FX_SCRIPT_SCOPE_LOCAL_VARS_START_SIZE  16

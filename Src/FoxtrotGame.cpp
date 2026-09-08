@@ -89,6 +89,16 @@ void FoxtrotGame::InitEngine()
 
 	ConfigEntry* window_entry = Config.GetEntry(HashStr32("Window"));
 
+	if (!window_entry)
+	{
+		static ConfigEntry sWindowEntryFallback;
+		sWindowEntryFallback.AddMember(ConfigEntry("Width", 1920));
+		sWindowEntryFallback.AddMember(ConfigEntry("Height", 1080));
+		sWindowEntryFallback.AddMember(ConfigEntry("Title", "Foxtrot"));
+
+		window_entry = &sWindowEntryFallback;
+	}
+
 	const uint32 window_width = window_entry->GetMember(HashStr32("Width"))->Get<uint32>();
 	const uint32 window_height = window_entry->GetMember(HashStr32("Height"))->Get<uint32>();
 

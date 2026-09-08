@@ -17,7 +17,15 @@ namespace fx {
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <Windows.h>
+// Win32 defines macros that collide with engine members (AssetWorker::LoadImage,
+// ObjectManager::GetObject). The engine never calls the Win32 functions.
+#pragma push_macro("GetObject")
+#undef GetObject
+#undef LoadImage
 #else
 #error "Unsupported platform"
 #endif

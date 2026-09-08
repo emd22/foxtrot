@@ -1,6 +1,7 @@
 #include "SysThread.hpp"
 
 #include <Core/Assert.hpp>
+#include <cassert>
 #include <utility>
 
 namespace fx {
@@ -120,7 +121,7 @@ SysThreadImpl_Windows& SysThreadImpl_Windows::operator=(SysThreadImpl_Windows&& 
 	}
 
 	if (bIsRunning) {
-		pthread_detach(InternalThread);
+		CloseHandle(InternalThread);
 	}
 
 	InternalThread = other.InternalThread;
@@ -203,7 +204,8 @@ bool SysThread::AreTIDsEqual(SysThreadInternalType a, SysThreadInternalType b)
 #if defined(FX_THREADS_PTHREAD)
 	return pthread_equal(a, b) != 0;
 #elif defined(FX_THREADS_WINDOWS)
-	return CompareObjectHandles(a, b);
+	// GetThreadId resolves pseudo-handles (from GetCurrentThread) as well, unlike a plain handle compare.
+	return GetThreadId(a) == GetThreadId(b);
 #endif
 }
 

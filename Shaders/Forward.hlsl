@@ -329,8 +329,10 @@ FSOutput main(FSInput input)
 
 	output.vAlbedo = float4(accumulated_light.rgb + ambient.rgb, base_alpha);
 
-	if ((FSConst.Flags & 0x01) != 0) {
-		const float3 lp_ambient = float3(0.3f, 0.3f, 0.3f) * albedo;
+	// Fallback flat ambient for passes without SSAO/probe data (e.g. 0x01).
+	// Not enabled on probe capture, direct-only so probes only store pure indirect.
+	if ((FSConst.Flags & 0x01) != 0 && (FSConst.Flags & 0x04) == 0) {
+		const float3 lp_ambient = float3(0.2f, 0.2f, 0.2f) * albedo;
 		output.vAlbedo = float4(accumulated_light.rgb + lp_ambient, 1.0f);
 	}
 

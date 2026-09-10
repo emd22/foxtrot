@@ -1,7 +1,3 @@
-/*
- * File:        LightProbe.cpp
- * Description: MVP light probe manager (SH L2 diffuse irradiance).
- */
 
 #include "LightProbe.hpp"
 
@@ -24,8 +20,8 @@
 
 namespace fx {
 
-// SH normalization constants (Peter-Pike Sloan). Basis order must match
-// EvalProbeIrradiance() in Shaders/ProbeCommon.hlsli.
+// (Efficient Spherical Harmonic Evaluation, p.88, Peter-Pike Sloan)
+// https://www.ppsloan.org/publications/SHJCGT.pdf
 static constexpr float32 scY00 = 0.282095f;
 static constexpr float32 scY1 = 0.488603f;
 
@@ -599,6 +595,19 @@ bool ProbeManager::ProjectStagedFaces(uint32 batch_slot, uint32 probe_index)
 	}
 #endif
 
+	// Consine convolution
+	static constexpr float32 scCosineConv[Limits::ProbeSHCoeffCount] = {
+		1.0f,											  // L00: pi / pi
+		0.6666667f, 0.6666667f, 0.6666667f,				  // L1: (2pi/3) / pi
+		0.25f,		0.25f,		0.25f,		0.25f, 0.25f, // L2: (pi/4) / pi
+	};
+
+	for (uint32 coeff_index = 0; coeff_index < Limits::ProbeSHCoeffCount; coeff_index++) {
+		sh[coeff_index][0] *= scCosineConv[coeff_index];
+		sh[coeff_index][1] *= scCosineConv[coeff_index];
+		sh[coeff_index][2] *= scCosineConv[coeff_index];
+	}
+
 	// Single bakes refresh the whole field (global ambient); grid bakes write
 	// only the current cell.
 	if (mNumProbesPending <= 1) {
@@ -707,7 +716,7 @@ void ProbeManager::UploadVolumeToGpu()
 struct FxProbeHeader
 {
 	char Magic[4] = { 'F', 'X', 'P', 'R' };
-	uint32 Version = 1;
+	uint32 Version = 2;
 	uint32 ProbeCount = Limits::MaxIrradianceProbes;
 };
 
@@ -759,8 +768,8 @@ bool ProbeManager::LoadProbes()
 		return false;
 	}
 
-	if (header->Version != 1 || header->ProbeCount != Limits::MaxIrradianceProbes) {
-		LogError("Probe file {} is version {} with {} probes (expected v1 x{}), ignoring", path.CStr(), header->Version,
+	if (header->Version != 2 || header->ProbeCount != Limits::MaxIrradianceProbes) {
+		LogError("Probe file {} is version {} with {} probes (expected v2 x{}), ignoring", path.CStr(), header->Version,
 				 header->ProbeCount, Limits::MaxIrradianceProbes);
 		return false;
 	}

@@ -200,9 +200,8 @@ void Object::RenderShallow(const Camera& camera, renderer::Pipeline* pipeline)
 	push_constants.TileColumns = gGraphics->pRenderer->GetLightTileColumns();
 
 
-	// Probe capture faces have no matching SSAO data; flag the shader to use ssao=1.
 	if (gProbeManager != nullptr && gProbeManager->IsCapturePending()) {
-		push_constants.Flags |= 0x01;
+		push_constants.Flags |= (0x01 | 0x04);
 	}
 
 	if (gGraphics->bOnlyRenderProbes) {

@@ -1,16 +1,10 @@
 /*
  * File:        LightProbe.hpp
- * Description: Light probes for precomputed global illumination.
- *
- * Stores diffuse irradiance as 2nd-order spherical harmonics (9 coeffs x RGB).
- * Probes live on a 3D grid (default 4x2x4 = 32) auto-fitted to the level; the
- * shader trilinearly blends the 8 surrounding probes per pixel.
- *
- * GPU mirrors in Shaders/ProbeCommon.hlsli:
- *   struct ProbeData   { float4 SH[9]; }
- *   struct ProbeVolume { float4 Min; float4 InvCellSize; uint4 DimsAndCount; }
- * float4 (not float3) is used deliberately so CPU/GPU packing matches exactly.
+ * Author:      emd22
+ * Created:     08/09/2026
+ * Description: Irradiance probes
  */
+
 
 #pragma once
 
@@ -27,8 +21,6 @@ namespace fx {
 
 struct ProbeData
 {
-	/// SH coefficients in D3D order: Y00, Y1-1, Y10, Y11, Y2-2, Y2-1, Y20, Y21, Y22.
-	/// Only .rgb is used; .a is padding for GPU alignment.
 	float32 SH[Limits::ProbeSHCoeffCount][4];
 };
 
